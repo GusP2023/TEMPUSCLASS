@@ -1,0 +1,395 @@
+.schedule-container {
+    position: relative;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: auto;
+    padding-bottom: 20px;
+    touch-action: pan-y; /* Permitir scroll vertical, controlar horizontal */
+}
+
+.schedule-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.3) 20%, 
+        rgba(255, 255, 255, 0.5) 50%, 
+        rgba(255, 255, 255, 0.3) 80%, 
+        transparent 100%
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 5;
+}
+
+.schedule-container:active::before {
+    opacity: 1;
+}
+
+/* Sabado Oculto */
+.schedule-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1px;
+    background: var(--border);
+    min-width: 320px;
+    width: 100%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.schedule-grid.transitioning {
+    opacity: 0.7;
+    transform: translateX(0);
+}
+
+.schedule-grid:has(.saturday-hidden) {
+    grid-template-columns: 60px repeat(6, 1fr);
+}
+
+.schedule-grid.transition-swipe-left {
+    transform: translateX(-20px);
+}
+
+.schedule-grid.transition-swipe-right {
+    transform: translateX(20px);
+}
+
+.schedule-grid.transition-button-prev {
+    transform: translateX(10px);
+}
+
+.schedule-grid.transition-button-next {
+    transform: translateX(-10px);
+}
+
+/* Efectos de feedback táctil */
+.schedule-grid.touch-feedback {
+    transform: scale(0.98);
+    opacity: 0.9;
+}
+
+/* Animación de carga inicial */
+.schedule-grid.initial-load {
+    animation: slideInFromBottom 0.6s ease-out;
+}
+
+.time-slot {
+    background: var(--white);
+    padding: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-light);
+    text-align: center;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50px;
+}
+
+.slot {
+    background: var(--white);
+    min-height: 55px;
+    min-width: 50px;
+    padding: 0.25rem;
+    cursor: pointer;
+    transition: background 0.3s;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.slot.empty {
+    font-size: 0.7rem;
+    color: var(--text-light);
+    text-align: center;
+    font-weight: 500;
+}
+
+.slot:hover {
+    background: var(--bg-main);
+}
+
+.slot.disabled {
+    background: var(--bg-secondary);
+    cursor: not-allowed;
+}
+
+.slot.disabled:hover {
+    background: var(--bg-secondary);
+}
+
+.class-block {
+    padding: 0.25rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.4s ease;
+}
+
+.class-block.regular {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: var(--white);
+}
+
+.class-block.recovery {
+    background: linear-gradient(135deg, var(--recovery) 0%, #7c3aed 100%);
+    color: var(--white);
+}
+
+.class-block.license {
+    background: linear-gradient(135deg, var(--license) 0%, #0891b2 100%);
+    color: var(--white);
+    opacity: 0.7;
+}
+
+.class-name {
+    font-weight: 600;
+    font-size: 0.65rem;
+    line-height: 1;
+}
+
+.class-type {
+    font-size: 0.6rem;
+    opacity: 0.9;
+    margin-top: 2px;
+}
+
+/* Separador de turnos */
+.time-separator {
+    background: var(--bg-secondary);
+    padding: 0.25rem;
+    font-size: 0.6rem;
+    color: var(--text-light);
+    text-align: center;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 20px;
+    grid-column: 1 / -1;
+    margin: 1px 0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.time-separator:hover {
+    background: var(--border);
+}
+
+.morning-hidden {
+    display: none !important;
+}
+
+.saturday-hidden {
+    display: none !important;
+}
+
+/* Attendance Mode */
+.attendance-mode {
+    background: var(--accent);
+    color: var(--white);
+    padding: 0.5rem 1rem;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+/* CSS para colores de asistencia */
+.class-block.attendance-present {
+    background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+    color: var(--white);
+    animation: statusChange 0.6s ease-out;
+}
+
+.class-block.attendance-absent {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: var(--white);
+    animation: statusChange 0.6s ease-out;
+}
+
+.class-block.attendance-license {
+    background: linear-gradient(135deg, var(--license) 0%, #0891b2 100%);
+    color: var(--white);
+    opacity: 0.7;
+    animation: statusChange 0.6s ease-out;
+}
+
+.class-block.attendance-pending {
+    animation: pulse 2s infinite;
+}
+
+/* CSS para toggle buttons */
+.view-controls {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    background: var(--white);
+    border-bottom: 1px solid var(--bg-secondary);
+}
+
+.toggle-btn {
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--border);
+    background: var(--white);
+    color: var(--text-light);
+    border-radius: 16px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.toggle-btn.active {
+    background: var(--primary);
+    color: var(--white);
+    border-color: var(--primary);
+}
+
+/* Indicadores de dirección para swipe */
+.swipe-hint {
+    position: absolute;
+    top: 50%;
+    font-size: 1.5rem;
+    color: rgba(255, 255, 255, 0.6);
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.swipe-hint.left {
+    left: 10px;
+    animation: swipeHintLeft 2s infinite;
+}
+
+.swipe-hint.right {
+    right: 10px;
+    animation: swipeHintRight 2s infinite;
+}
+
+/* Responsivo - ajustes para pantallas pequeñas */
+@media (max-width: 480px) {
+    .nav-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 1.1rem;
+    }
+    
+    .navigation-indicator {
+        font-size: 1.5rem;
+    }
+    
+    .back-to-current {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.4rem;
+    }
+    
+    .week-nav {
+        gap: 0.3rem;
+    }
+}
+
+/* Responsivo para pantallas muy pequeñas */
+@media (max-width: 350px) {
+    .nav-label {
+        font-size: 0.65rem;
+    }
+    
+    .nav-icon {
+        width: 18px !important;
+        height: 18px !important;
+    }
+    
+    .fab {
+        width: 50px;
+        height: 50px;
+        bottom: 85px;
+    }
+    
+    .fab svg {
+        width: 20px !important;
+        height: 20px !important;
+    }
+}
+
+/* Modo oscuro - ajustes para navegación */
+@media (prefers-color-scheme: dark) {
+    .nav-btn {
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    .nav-btn:hover {
+        background: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    }
+    
+    .navigation-indicator {
+        color: rgba(255, 255, 255, 0.9);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+@keyframes slideInFromBottom {
+    0% {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes statusChange {
+    0% { 
+        transform: scale(1); 
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+    }
+    50% { 
+        transform: scale(1.05); 
+        box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2);
+    }
+    100% { 
+        transform: scale(1); 
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    }
+}
+
+@keyframes swipeHintLeft {
+    0%, 100% { 
+        opacity: 0;
+        transform: translateY(-50%) translateX(0);
+    }
+    50% { 
+        opacity: 0.6;
+        transform: translateY(-50%) translateX(-5px);
+    }
+}
+
+@keyframes swipeHintRight {
+    0%, 100% { 
+        opacity: 0;
+        transform: translateY(-50%) translateX(0);
+    }
+    50% { 
+        opacity: 0.6;
+        transform: translateY(-50%) translateX(5px);
+    }
+}

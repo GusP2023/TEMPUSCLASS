@@ -1,0 +1,308 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary: #1e3a8a;
+    --primary-dark: #1e2a5a;
+    --accent: #f59e0b;
+    --bg-main: #f8fafc;
+    --bg-secondary: #e2e8f0;
+    --text: #1e293b;
+    --text-light: #64748b;
+    --success: #10b981;
+    --error: #ef4444;
+    --white: #ffffff;
+    --border: #cbd5e1;
+    --recovery: #8b5cf6;
+    --license: #06b6d4;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-main);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.header {
+    background: var(--primary);
+    color: var(--white);
+    padding: 0.5rem 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.header h1 {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.header.header-transitioning {
+    opacity: 0.9;
+}
+
+.week-nav {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    position: relative;
+}
+
+.week-nav button {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: var(--white);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s;
+    font-size: 1.25rem;
+}
+
+.week-nav button:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+.week-nav span {
+    font-size: 0.8rem;
+    min-width: 100px;
+    text-align: center;
+}
+
+.week-days {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 2px;
+    margin-top: 0.5rem;
+    width: 100%;
+}
+
+.week-day-header {
+    text-align: center;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.1rem;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.week-day-header.today {
+    background: rgba(255,255,255,0.3);
+    font-weight: 600;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    padding-bottom: 140px;
+}
+
+/* Resetear cualquier interferencia con bottom-nav */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--white);
+    border-top: 1px solid var(--bg-secondary);
+    display: flex;
+    justify-content: space-around;
+    padding: 0.5rem 0;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+    z-index: 1000; /* ✅ Mayor prioridad */
+    height: 73px; /* ✅ Altura fija */
+}
+
+.nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    color: var(--text-light);
+    max-width: 80px; /* ✅ Limitar ancho */
+}
+
+.nav-item.active {
+    color: var(--primary);
+}
+
+/* Iconos de navegación mejorados */
+.nav-icon {
+    width: 20px !important; /* ✅ Forzar tamaño correcto */
+    height: 20px !important;
+    flex-shrink: 0;
+    display: inline-block;
+    font-size: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.nav-btn-prev:hover .nav-icon {
+    transform: translateX(-2px);
+}
+
+.nav-btn-next:hover .nav-icon {
+    transform: translateX(2px);
+}
+
+.nav-label {
+    font-size: 0.7rem; /* ✅ Reducir un poco */
+    font-weight: 500;
+    line-height: 1;
+}
+
+/* Botones de navegación mejorados */
+.nav-btn {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.nav-btn:hover {
+    background: rgba(255,255,255,0.4);
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.nav-btn:active {
+    transform: scale(0.95);
+}
+
+/* Efecto ripple para botones */
+.nav-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s;
+}
+
+.nav-btn:active::after {
+    width: 40px;
+    height: 40px;
+}
+
+/* Indicador de navegación */
+.navigation-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    color: rgba(255, 255, 255, 0.8);
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.navigation-indicator.active {
+    opacity: 1;
+    animation: navigationPulse 0.3s ease-out;
+}
+
+.navigation-indicator.next {
+    transform: translate(-50%, -50%) translateX(20px);
+}
+
+.navigation-indicator.prev {
+    transform: translate(-50%, -50%) translateX(-20px);
+}
+
+/* Indicador de semana no actual */
+.not-current-week {
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-style: italic;
+}
+
+/* Botón para volver a semana actual */
+.back-to-current {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: var(--white);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-left: 0.5rem;
+}
+
+.back-to-current:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Floating Action Button */
+.fab {
+    position: fixed;
+    bottom: 90px;
+    right: 1rem;
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--accent) 0%, #d97706 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+    cursor: pointer;
+    transition: transform 0.3s;
+    z-index: 999;
+}
+
+.fab:hover {
+    transform: scale(1.1);
+}
+
+.fab svg {
+    width: 24px !important; /* ✅ Forzar tamaño del SVG */
+    height: 24px !important;
+}
+
+@keyframes navigationPulse {
+    0% { 
+        transform: translate(-50%, -50%) scale(0.8);
+        opacity: 0;
+    }
+    50% { 
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 1;
+    }
+    100% { 
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.8;
+    }
+}
