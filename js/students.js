@@ -781,3 +781,116 @@ function validateMultipleSchedules(excludeId = null) {
     
     return { schedule1: validation1, schedule2: validation2 };
 }
+
+// ✅ GESTIÓN DE CRÉDITOS
+function openCreditsModal() {
+    const modal = document.getElementById('creditsModal');
+    const select = document.getElementById('creditsStudent');
+    
+    // Llenar lista de estudiantes activos
+    select.innerHTML = '<option value="">Seleccionar alumno...</option>';
+    
+    const activeStudents = students.filter(s => s.active)
+        .sort((a, b) => a.name.localeCompare(b.name));
+    
+    activeStudents.forEach(student => {
+        const currentCredits = student.licenseCredits || 0;
+        select.innerHTML += `<option value="${student.id}">${student.name} (${currentCredits} créditos actuales)</option>`;
+    });
+    
+    // Event listener para mostrar info del estudiante seleccionado
+    select.addEventListener('change', showCurrentCreditsInfo);
+    
+    // Reset form
+    document.getElementById('creditsForm').reset();
+    document.getElementById('currentCreditsInfo').style.display = 'none';
+    
+    modal.classList.add('active');
+}
+
+function showCurrentCreditsInfo() {
+    const studentId = parseInt(document.getElementById('creditsStudent').value);
+    const infoDiv = document.getElementById('currentCreditsInfo');
+    
+    if (!studentId) {
+        infoDiv.style.display = 'none';
+        return;
+    }
+    
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+    
+    const currentCredits = student.licenseCredits || 0;
+    const recoveries = specialClasses.filter(sc => 
+        sc.studentId === studentId && sc.type === 'recovery'
+    );
+    const licenses = specialClasses.filter(sc => 
+        sc.studentId === studentId && sc.type === 'license'
+    );
+    
+    infoDiv.innerHTML = `
+        <p><strong>Estado actual de ${student.name}:</strong></p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem; font-size: 0.8rem;">
+            <div>• Créditos disponibles: <strong>${currentCredits}</strong></div>
+            <div>• Total licencias: <strong>${licenses.length}</strong></div>
+            <div>• Recuperaciones agendadas: <strong>${recoveries.length}</strong></div>
+            <div>• Balance: <strong>${currentCredits >= 0 ? 'Positivo' : 'Negativo'}</strong></div>
+        </div>
+    `;
+    infoDiv.style.display = 'block';
+}
+
+// Event listener para el form
+document.addEventListener('DOMContentLoaded', () => {
+    const creditsForm = document.getElementById('creditsForm');
+    if (creditsForm) {
+        creditsForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            addCreditsToStudent();
+        });
+    }
+});
+
+function addCreditsToStudent() {
+    const studentId = parseInt(document.getElementById('creditsStudent').value);
+    const amount = parseInt(document.getElementById('creditsAmount').value);
+    const reason = document.getElementById('creditsReason').value.trim();
+    
+    if (!studentId || !amount || amount <= 0) {
+        showToast('Por favor completa los campos obligatorios');
+        return;
+    }
+    
+    const student = students.find(s => s.id === studentId);
+    if (!student) {
+        showToast('Estudiante no encontrado');
+        return;
+    }
+    
+    // Agregar créditos
+    const previousCredits = student.licenseCredits || 0;
+    student.licenseCredits = previousCredits + amount;
+    
+    // Crear registro de la operación (opcional, para auditoría)
+    const creditRecord = {
+        id: Date.now(),
+        studentId: studentId,
+        amount: amount,
+        reason: reason || 'Ajuste manual de créditos',
+        date: new Date().toISOString().split('T')[0],
+        timestamp: Date.now(),
+        previousCredits: previousCredits,
+        newCredits: student.licenseCredits
+    };
+    
+    // Guardar en localStorage para auditoría (opcional)
+    let creditHistory = JSON.parse(localStorage.getItem('creditHistory') || '[]');
+    creditHistory.push(creditRecord);
+    localStorage.setItem('creditHistory', JSON.stringify(creditHistory));
+    
+    saveData();
+    renderStudentsList();
+    closeModal();
+    
+    showToast(`✅ ${amount} crédito${amount > 1 ? 's' : ''} agregado${amount > 1 ? 's' : ''} a ${student.name}. Total: ${student.licenseCredits}`);
+}

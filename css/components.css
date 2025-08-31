@@ -315,6 +315,42 @@
     font-weight: 500;
 }
 
+/* ✅ Estilos para gestión de créditos */
+.students-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn-credits {
+    background: linear-gradient(135deg, var(--accent) 0%, #d97706 100%);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
+.btn-credits:hover {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+}
+
+.current-credits-info {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(4, 120, 87, 0.1) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin: 0.75rem 0;
+    font-size: 0.875rem;
+}
 /* Estilos para el contador de estudiantes adicionales */
 .more-students {
     font-size: 0.8rem;
@@ -582,6 +618,19 @@
     .students-section {
         padding-bottom: 180px; /* ✅ Más espacio en móviles */
         min-height: calc(100vh - 120px); /* ✅ Altura mínima considerando header */
+    }
+
+    .students-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .students-filters {
+        justify-content: center;
+    }
+    
+    .btn-credits {
+        text-align: center;
     }
 }
 
