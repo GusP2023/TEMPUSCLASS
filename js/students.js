@@ -43,9 +43,23 @@ function renderStudentsList() {
     }).sort((a, b) => a.name.localeCompare(b.name));
 
     container.innerHTML = filteredStudents.map(student => {
-        const scheduleText = student.startDate ? 
-            `${getDayName(student.regularDay)} ${student.regularTime} (desde ${student.startDate})` :
-            `${getDayName(student.regularDay)} ${student.regularTime}`;
+        // ✅ MOSTRAR MÚLTIPLES HORARIOS
+        let scheduleText = '';
+        
+        if (student.schedules && student.schedules.length > 0) {
+            scheduleText = student.schedules
+                .map(s => `${getDayName(s.day)} ${s.time}`)
+                .join(' • ');
+        } else {
+            // Compatibilidad con formato antiguo
+            scheduleText = student.regularDay ? 
+                `${getDayName(student.regularDay)} ${student.regularTime}` : 
+                'Sin horario';
+        }
+        
+        if (student.startDate) {
+            scheduleText += ` (desde ${student.startDate})`;
+        }
             
         return `
             <div class="student-card ${student.active ? '' : 'inactive'}" onclick="showStudentDetails(${student.id})">
@@ -57,7 +71,7 @@ function renderStudentsList() {
                 </div>
                 <div class="student-info">
                     <div><strong>Instrumento:</strong> ${student.instrument}</div>
-                    <div><strong>Horario:</strong> ${scheduleText}</div>
+                    <div><strong>Horario${student.schedules?.length > 1 ? 's' : ''}:</strong> ${scheduleText}</div>
                 </div>
                 ${student.licenseCredits > 0 ? `<div class="student-credits">💳 ${student.licenseCredits} créditos disponibles</div>` : ''}
             </div>
@@ -77,16 +91,30 @@ function showStudentDetails(studentId) {
         sc.studentId === studentId && sc.type === 'recovery'
     ).sort((a, b) => new Date(b.date) - new Date(a.date));
     
-    // Información de horario con fecha de inicio
-    const scheduleInfo = student.startDate ? 
-        `${getDayName(student.regularDay)} ${student.regularTime} (desde ${student.startDate})` :
-        `${getDayName(student.regularDay)} ${student.regularTime}`;
+    // ✅ INFORMACIÓN DE MÚLTIPLES HORARIOS
+    let scheduleInfo = '';
+    if (student.schedules && student.schedules.length > 0) {
+        scheduleInfo = student.schedules
+            .map(s => `${getDayName(s.day)} ${s.time}`)
+            .join(' • ');
+        if (student.startDate) {
+            scheduleInfo += ` (desde ${student.startDate})`;
+        }
+    } else {
+        // Compatibilidad con formato antiguo
+        scheduleInfo = student.regularDay ? 
+            `${getDayName(student.regularDay)} ${student.regularTime}` : 
+            'Sin horario';
+        if (student.startDate) {
+            scheduleInfo += ` (desde ${student.startDate})`;
+        }
+    }
     
     body.innerHTML = `
         <div class="student-info">
             <p><strong>Nombre:</strong> ${student.name}</p>
             <p><strong>Instrumento:</strong> ${student.instrument}</p>
-            <p><strong>Horario:</strong> ${scheduleInfo}</p>
+            <p><strong>Horario${student.schedules?.length > 1 ? 's' : ''}:</strong> ${scheduleInfo}</p>
             <p><strong>Estado:</strong> ${student.active ? 'Activo' : 'Inactivo'}</p>
             <p><strong>Créditos:</strong> ${student.licenseCredits || 0}</p>
             ${student.startDate ? `<p><strong>Fecha de inicio:</strong> ${student.startDate}</p>` : ''}
@@ -146,32 +174,55 @@ function openStudentForm(editId = null) {
     currentEditingStudent = editId;
     title.textContent = editId ? 'Editar Alumno' : 'Agregar Alumno';
     
+    // Resetear formulario a estado inicial
+    form.reset();
+    document.getElementById('secondScheduleGroup').style.display = 'none';
+    document.getElementById('addScheduleGroup').style.display = 'block';
+    
     ensureStartDateField();
+    
+    // Llenar opciones de tiempo
+    populateTimeSlots('studentTime1');
+    populateTimeSlots('studentTime2');
     
     if (editId) {
         const student = students.find(s => s.id === editId);
         if (student) {
             document.getElementById('studentName').value = student.name;
             document.getElementById('studentInstrument').value = student.instrument;
-            document.getElementById('studentDay').value = student.regularDay;
             
-            populateTimeSlots();
-            setTimeout(() => {
-                document.getElementById('studentTime').value = student.regularTime;
+            // ✅ CARGAR MÚLTIPLES HORARIOS
+            if (student.schedules && student.schedules.length > 0) {
+                // Primer horario
+                const schedule1 = student.schedules[0];
+                document.getElementById('studentDay1').value = schedule1.day;
+                document.getElementById('studentTime1').value = schedule1.time;
                 
-                if (student.startDate) {
-                    document.getElementById('studentStartDate').value = student.startDate;
+                // Segundo horario (si existe)
+                if (student.schedules.length > 1) {
+                    const schedule2 = student.schedules[1];
+                    addSecondSchedule();
+                    setTimeout(() => {
+                        document.getElementById('studentDay2').value = schedule2.day;
+                        document.getElementById('studentTime2').value = schedule2.time;
+                    }, 100);
                 }
-            }, 50);
+            } else {
+                // ✅ COMPATIBILIDAD: Estudiante con formato antiguo
+                if (student.regularDay && student.regularTime) {
+                    document.getElementById('studentDay1').value = student.regularDay;
+                    document.getElementById('studentTime1').value = student.regularTime;
+                }
+            }
+            
+            if (student.startDate) {
+                document.getElementById('studentStartDate').value = student.startDate;
+            }
         }
         
         document.getElementById('studentStartDate').removeAttribute('required');
-        
     } else {
-        form.reset();
-        populateTimeSlots();
-        
-        // Para nuevo alumno, permitir fechas desde inicio del mes actual
+        // Para nuevo alumno
         const firstDayOfMonth = new Date();
         firstDayOfMonth.setDate(1);
         const firstDayStr = firstDayOfMonth.toISOString().split('T')[0];
@@ -181,6 +232,8 @@ function openStudentForm(editId = null) {
     }
     
     modal.classList.add('active');
+
+    setTimeout(() => setupMultipleScheduleValidation(), 100);
 }
 
 function editStudent(studentId) {
@@ -191,84 +244,90 @@ function editStudent(studentId) {
 function saveStudent() {
     const name = document.getElementById('studentName').value.trim();
     const instrument = document.getElementById('studentInstrument').value;
-    const day = parseInt(document.getElementById('studentDay').value);
-    const time = document.getElementById('studentTime').value;
+    const day1 = parseInt(document.getElementById('studentDay1').value);
+    const time1 = document.getElementById('studentTime1').value;
+    const day2 = parseInt(document.getElementById('studentDay2').value);
+    const time2 = document.getElementById('studentTime2').value;
     const startDate = document.getElementById('studentStartDate').value || null;
     
-    if (!name || !instrument || !day || !time) {
+    if (!name || !instrument || !day1 || !time1) {
         showToast('Por favor completa todos los campos obligatorios');
         return;
     }
     
-    const scheduleValidation = validateUniqueSchedule(day, time, currentEditingStudent);
+    // ✅ VALIDAR MÚLTIPLES HORARIOS
+    const scheduleValidation = validateMultipleSchedules(currentEditingStudent);
     
     if (scheduleValidation === false) {
-        showToast('Este horario ya está ocupado por otro alumno activo');
-        return;
+        return; // Error ya mostrado en validateMultipleSchedules
     }
     
-    // Validar que la fecha de inicio sea correcta si hay conflicto
-    if (typeof scheduleValidation === 'string' && startDate) {
-        const conflictEndDate = new Date(scheduleValidation);
-        const selectedStartDate = new Date(startDate);
-        
-        if (selectedStartDate < conflictEndDate) {
-            showToast(`La fecha de inicio debe ser posterior al ${scheduleValidation}`);
-            return;
-        }
+    // ✅ CREAR ESTRUCTURA DE HORARIOS
+    const schedules = [{ day: day1, time: time1, active: true }];
+    
+    if (day2 && time2) {
+        schedules.push({ day: day2, time: time2, active: true });
     }
     
     if (currentEditingStudent) {
-        updateExistingStudent(currentEditingStudent, name, instrument, day, time, startDate);
+        updateExistingStudent(currentEditingStudent, name, instrument, schedules, startDate);
     } else {
-        createNewStudent(name, instrument, day, time, startDate);
+        createNewStudent(name, instrument, schedules, startDate);
     }
 }
 
-function createNewStudent(name, instrument, day, time, startDate = null) {
+function createNewStudent(name, instrument, schedules, startDate = null) {
     const newStudentId = Date.now() + Math.floor(Math.random() * 1000);
     
     const newStudent = {
         id: newStudentId,
         name: name,
         instrument: instrument,
-        regularDay: day,
-        regularTime: time,
+        schedules: schedules, // ✅ NUEVO: Array de horarios
         active: true,
         licenseCredits: 0,
         createdAt: new Date().toISOString(),
         startDate: startDate || null
     };
     
-    const newRegularClass = {
-        id: Date.now() + Math.floor(Math.random() * 1000) + 1,
-        studentId: newStudentId,
-        day: day,
-        time: time
-    };
+    // ✅ CREAR CLASES REGULARES PARA CADA HORARIO
+    schedules.forEach((schedule, index) => {
+        const newRegularClass = {
+            id: Date.now() + Math.floor(Math.random() * 1000) + index + 1,
+            studentId: newStudentId,
+            day: schedule.day,
+            time: schedule.time,
+            scheduleIndex: index // ✅ Identificar cuál horario es
+        };
+        
+        regularClasses.push(newRegularClass);
+    });
     
     students.push(newStudent);
-    regularClasses.push(newRegularClass);
     
-    // Generar auto-licencias para fechas pasadas del mes actual
-    generateAutoLicensesForPastDates(newStudent, newRegularClass);
+    // ✅ GENERAR LICENCIAS AUTOMÁTICAS PARA CADA HORARIO
+    schedules.forEach((schedule, index) => {
+        generateAutoLicensesForSchedule(newStudent, schedule, index);
+    });
     
     saveData();
     renderStudentsList();
     renderWeekView();
     closeModal();
     
+    const scheduleText = schedules.map(s => `${getDayName(s.day)} ${s.time}`).join(' y ');
     const startMessage = startDate ? ` (inicia el ${startDate})` : '';
-    showToast(`✅ Alumno ${name} inscrito exitosamente${startMessage}`);
+    showToast(`✅ Alumno ${name} inscrito exitosamente con horarios: ${scheduleText}${startMessage}`);
 }
 
-function updateExistingStudent(studentId, name, instrument, day, time, startDate = null) {
+function updateExistingStudent(studentId, name, instrument, schedules, startDate = null) {
     const student = students.find(s => s.id === studentId);
     
-    // Detectar si hubo cambio de horario
-    const scheduleChanged = student.regularDay !== day || student.regularTime !== time;
+    // ✅ DETECTAR CAMBIOS EN HORARIOS
+    const oldSchedules = student.schedules || [{ day: student.regularDay, time: student.regularTime }];
+    const scheduleChanged = JSON.stringify(oldSchedules) !== JSON.stringify(schedules);
     
-    // Si cambió horario, limpiar licencias automáticas del mes actual
+    // Si cambió horarios, limpiar licencias automáticas del mes actual
     if (scheduleChanged) {
         const today = new Date();
         const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -277,9 +336,7 @@ function updateExistingStudent(studentId, name, instrument, day, time, startDate
         specialClasses = specialClasses.filter(sc => {
             if (sc.studentId === studentId && sc.type === 'license' && sc.autoGenerated) {
                 const licenseDate = new Date(sc.date);
-                // Eliminar si es del mes actual
                 if (licenseDate >= firstDayOfMonth) {
-                    // Restar el crédito
                     student.licenseCredits = Math.max(0, (student.licenseCredits || 0) - 1);
                     return false;
                 }
@@ -296,30 +353,38 @@ function updateExistingStudent(studentId, name, instrument, day, time, startDate
             }
             return true;
         });
+        
+        // ✅ ELIMINAR CLASES REGULARES ANTERIORES
+        regularClasses = regularClasses.filter(rc => rc.studentId !== studentId);
     }
     
+    // ✅ ACTUALIZAR ESTUDIANTE
     student.name = name;
     student.instrument = instrument;
-    student.regularDay = day;
-    student.regularTime = time;
+    student.schedules = schedules;
     
-    let regularClass = regularClasses.find(rc => rc.studentId === studentId);
-    if (regularClass) {
-        regularClass.day = day;
-        regularClass.time = time;
-    } else {
-        regularClass = {
-            id: Date.now() + Math.floor(Math.random() * 1000),
+    // Limpiar campos antiguos si existen
+    delete student.regularDay;
+    delete student.regularTime;
+    
+    // ✅ CREAR NUEVAS CLASES REGULARES
+    schedules.forEach((schedule, index) => {
+        const newRegularClass = {
+            id: Date.now() + Math.floor(Math.random() * 1000) + index,
             studentId: studentId,
-            day: day,
-            time: time
+            day: schedule.day,
+            time: schedule.time,
+            scheduleIndex: index
         };
-        regularClasses.push(regularClass);
-    }
-
-    // Si cambió horario, regenerar licencias para nuevo horario
+        
+        regularClasses.push(newRegularClass);
+    });
+    
+    // ✅ REGENERAR LICENCIAS PARA NUEVOS HORARIOS
     if (scheduleChanged) {
-        generateAutoLicensesForPastDates(student, regularClass);
+        schedules.forEach((schedule, index) => {
+            generateAutoLicensesForSchedule(student, schedule, index);
+        });
     }
     
     saveData();
@@ -327,7 +392,140 @@ function updateExistingStudent(studentId, name, instrument, day, time, startDate
     renderWeekView();
     closeModal();
     
-    showToast(`✅ Alumno ${name} actualizado exitosamente`);
+    const scheduleText = schedules.map(s => `${getDayName(s.day)} ${s.time}`).join(' y ');
+    showToast(`✅ Alumno ${name} actualizado exitosamente. Horarios: ${scheduleText}`);
+}
+
+// ✅ NUEVA: Generar licencias automáticas para un horario específico
+function generateAutoLicensesForSchedule(student, schedule, scheduleIndex) {
+    if (!student.startDate) return;
+    
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    
+    const [year, month, day] = student.startDate.split('-').map(Number);
+    const startDate = new Date(year, month - 1, day);
+    startDate.setHours(0, 0, 0, 0);
+    
+    if (startDate > today) return;
+    
+    // Encontrar la primera fecha de clase válida para este horario
+    let firstClassDate = new Date(startDate);
+    const targetDayOfWeek = schedule.day % 7;
+    
+    while (firstClassDate.getDay() !== targetDayOfWeek) {
+        firstClassDate.setDate(firstClassDate.getDate() + 1);
+    }
+    
+    // Generar todas las fechas de clase perdidas para este horario
+    const missedClassDates = [];
+    let currentClassDate = new Date(firstClassDate);
+    
+    while (currentClassDate <= today) {
+        const [hours, minutes] = schedule.time.split(':').map(Number);
+        const classDateTime = new Date(currentClassDate);
+        classDateTime.setHours(hours, minutes, 0, 0);
+        
+        if (classDateTime < new Date()) {
+            missedClassDates.push(new Date(currentClassDate));
+        }
+        
+        currentClassDate.setDate(currentClassDate.getDate() + 7);
+    }
+    
+    // Crear licencias automáticas para cada clase perdida de este horario
+    missedClassDates.forEach(date => {
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        
+        const existingLicense = specialClasses.find(sc => 
+            sc.studentId === student.id && 
+            sc.date === dateStr && 
+            sc.time === schedule.time &&
+            sc.type === 'license'
+        );
+        
+        if (!existingLicense) {
+            const newLicense = {
+                id: Date.now() + Math.random(),
+                studentId: student.id,
+                date: dateStr,
+                time: schedule.time,
+                type: 'license',
+                autoGenerated: true,
+                scheduleIndex: scheduleIndex, // ✅ Identificar a qué horario pertenece
+                reason: `Clase perdida - Inscripción tardía desde ${student.startDate} (Horario ${scheduleIndex + 1})`
+            };
+            
+            specialClasses.push(newLicense);
+            student.licenseCredits = (student.licenseCredits || 0) + 1;
+        }
+    });
+}
+
+// ✅ VALIDACIÓN EN TIEMPO REAL para múltiples horarios
+function setupMultipleScheduleValidation() {
+    const day1 = document.getElementById('studentDay1');
+    const time1 = document.getElementById('studentTime1');
+    const day2 = document.getElementById('studentDay2');
+    const time2 = document.getElementById('studentTime2');
+    
+    if (!day1 || !time1) return; // Elementos no existen aún
+    
+    const validateScheduleInputs = () => {
+        // Validar primer horario
+        validateSingleScheduleInput(day1, time1, 1);
+        
+        // Validar segundo horario si existe
+        if (day2 && time2 && day2.value && time2.value) {
+            validateSingleScheduleInput(day2, time2, 2);
+            
+            // Validar que no sean idénticos
+            if (day1.value === day2.value && time1.value === time2.value && day1.value && time1.value) {
+                day2.style.borderColor = '#ef4444';
+                time2.style.borderColor = '#ef4444';
+                showToast('⚠️ Los horarios no pueden ser idénticos');
+            }
+        }
+    };
+    
+    // Event listeners para todos los campos
+    day1.addEventListener('change', validateScheduleInputs);
+    time1.addEventListener('change', validateScheduleInputs);
+    
+    if (day2 && time2) {
+        day2.addEventListener('change', validateScheduleInputs);
+        time2.addEventListener('change', validateScheduleInputs);
+    }
+}
+
+function validateSingleScheduleInput(daySelect, timeSelect, scheduleNumber) {
+    const day = parseInt(daySelect.value);
+    const time = timeSelect.value;
+    
+    if (!day || !time) {
+        // Resetear estilos si no hay valores
+        daySelect.style.borderColor = '';
+        timeSelect.style.borderColor = '';
+        return;
+    }
+    
+    const validation = validateUniqueSchedule(day, time, currentEditingStudent);
+    
+    if (validation === false) {
+        // Horario ocupado
+        daySelect.style.borderColor = '#ef4444';
+        timeSelect.style.borderColor = '#ef4444';
+        showToast(`❌ Horario ${scheduleNumber} ocupado por otro estudiante`);
+    } else if (typeof validation === 'string') {
+        // Horario se libera en fecha futura
+        daySelect.style.borderColor = '#f59e0b';
+        timeSelect.style.borderColor = '#f59e0b';
+        showToast(`⚠️ Horario ${scheduleNumber} disponible desde: ${validation}`);
+    } else {
+        // Horario disponible
+        daySelect.style.borderColor = '#10b981';
+        timeSelect.style.borderColor = '#10b981';
+    }
 }
 
 // NUEVA: Asegurar que el campo de fecha de inicio existe en el formulario
@@ -352,8 +550,10 @@ function ensureStartDateField() {
 }
 
 // Horarios disponibles
-function populateTimeSlots() {
-    const timeSelect = document.getElementById('studentTime');
+function populateTimeSlots(selectId = 'studentTime1') {
+    const timeSelect = document.getElementById(selectId);
+    if (!timeSelect) return;
+    
     timeSelect.innerHTML = '<option value="">Seleccionar...</option>';
     
     timeSlots.forEach(time => {
@@ -363,12 +563,20 @@ function populateTimeSlots() {
 
 // Validar horario único
 function validateUniqueSchedule(day, time, excludeId = null, allowFutureStart = true) {
-    const conflictingStudent = students.find(s => 
-        s.id !== excludeId && 
-        s.regularDay == day && 
-        s.regularTime === time &&
-        s.active
-    );
+    // ✅ VALIDAR CONTRA MÚLTIPLES HORARIOS
+    const conflictingStudent = students.find(s => {
+        if (s.id === excludeId || !s.active) return false;
+        
+        // Verificar nuevo formato (schedules)
+        if (s.schedules && s.schedules.length > 0) {
+            return s.schedules.some(schedule => 
+                schedule.day === day && schedule.time === time
+            );
+        }
+        
+        // Compatibilidad con formato antiguo
+        return s.regularDay === day && s.regularTime === time;
+    });
     
     if (!conflictingStudent) return true;
     
@@ -378,60 +586,6 @@ function validateUniqueSchedule(day, time, excludeId = null, allowFutureStart = 
     }
     
     return false;
-} 
-
-function setupScheduleValidation() {
-    const daySelect = document.getElementById('studentDay');
-    const timeSelect = document.getElementById('studentTime');
-    
-    const validateScheduleInputs = () => {
-        const day = parseInt(daySelect.value);
-        const time = timeSelect.value;
-        
-        if (day && time) {
-            const validation = validateUniqueSchedule(day, time, currentEditingStudent);
-            const submitBtn = document.querySelector('#studentForm .btn-primary');
-            const startDateInput = document.getElementById('studentStartDate');
-            
-            if (validation === false) {
-                timeSelect.style.borderColor = '#ef4444';
-                submitBtn.textContent = 'Horario ocupado';
-                submitBtn.disabled = true;
-                startDateInput.disabled = true;
-            } else if (typeof validation === 'string') {
-                // Horario se libera en fecha futura
-                timeSelect.style.borderColor = '#f59e0b';
-                submitBtn.textContent = 'Inscribir';
-                submitBtn.disabled = false;
-                startDateInput.disabled = false;
-                startDateInput.min = validation;
-                startDateInput.value = validation;
-                
-                const helpText = startDateInput.parentNode.querySelector('small');
-                helpText.textContent = `Horario disponible desde: ${validation}`;
-                helpText.style.color = '#f59e0b';
-            } else {
-                // Horario disponible - permitir fechas desde inicio de mes
-                timeSelect.style.borderColor = '#10b981';
-                submitBtn.textContent = currentEditingStudent ? 'Actualizar' : 'Guardar';
-                submitBtn.disabled = false;
-                startDateInput.disabled = false;
-                
-                // Permitir fechas desde primer día del mes actual
-                const firstDayOfMonth = new Date();
-                firstDayOfMonth.setDate(1);
-                const firstDayStr = firstDayOfMonth.toISOString().split('T')[0];
-                startDateInput.min = firstDayStr;
-                
-                const helpText = startDateInput.parentNode.querySelector('small');
-                helpText.textContent = 'Fechas pasadas generarán licencias automáticas por días perdidos';
-                helpText.style.color = 'var(--text-light)';
-            }
-        }
-    };
-    
-    daySelect.addEventListener('change', validateScheduleInputs);
-    timeSelect.addEventListener('change', validateScheduleInputs);
 }
 
 // Desactivación con fecha
@@ -512,105 +666,22 @@ function cancelFutureClasses(studentId, fromDate) {
     console.log(`✅ Alumno ${studentId} desactivado desde ${fromDate}. Historial conservado.`);
 }
 
-// NUEVA: Generar licencias automáticas para fechas pasadas - CORREGIDA
-function generateAutoLicensesForPastDates(student, regularClass) {
-    if (!student.startDate) return;
-    
-    const today = new Date();
-    today.setHours(23, 59, 59, 999); // Fin del día para comparaciones
-    
-    // Parsear fecha de inicio correctamente
-    const [year, month, day] = student.startDate.split('-').map(Number);
-    const startDate = new Date(year, month - 1, day);
-    startDate.setHours(0, 0, 0, 0);
-    
-    // Si empieza en el futuro, no generar licencias
-    if (startDate > today) return;
-    
-    // 1. Encontrar la PRIMERA fecha de clase válida desde la fecha de inicio
-    let firstClassDate = new Date(startDate);
-    const targetDayOfWeek = student.regularDay % 7; // Convertir a formato Date (0=Dom, 1=Lun, etc.)
-    
-    // Buscar el primer día que coincida con el día de clase
-    while (firstClassDate.getDay() !== targetDayOfWeek) {
-        firstClassDate.setDate(firstClassDate.getDate() + 1);
-    }
-    
-    console.log(`📅 ${student.name}: Fecha inicio ${student.startDate}, primer día de clase ${firstClassDate.toISOString().split('T')[0]}`);
-    
-    // 2. Generar todas las fechas de clase desde la primera fecha válida hasta hoy
-    const missedClassDates = [];
-    let currentClassDate = new Date(firstClassDate);
-    
-    while (currentClassDate <= today) {
-        // Crear fecha/hora completa de la clase
-        const [hours, minutes] = student.regularTime.split(':').map(Number);
-        const classDateTime = new Date(currentClassDate);
-        classDateTime.setHours(hours, minutes, 0, 0);
-        
-        // Si la clase ya pasó, agregarla a las perdidas
-        if (classDateTime < new Date()) {
-            missedClassDates.push(new Date(currentClassDate));
-            console.log(`⏰ Clase perdida detectada: ${currentClassDate.toISOString().split('T')[0]} ${student.regularTime}`);
-        }
-        
-        // Avanzar a la siguiente semana (mismo día)
-        currentClassDate.setDate(currentClassDate.getDate() + 7);
-    }
-    
-    console.log(`📅 Alumno ${student.name}: encontradas ${missedClassDates.length} clases perdidas desde ${student.startDate}`);
-    
-    // Crear licencias automáticas para cada clase perdida
-    missedClassDates.forEach(date => {
-        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        
-        // Verificar que no exista ya una licencia para esta fecha
-        const existingLicense = specialClasses.find(sc => 
-            sc.studentId === student.id && 
-            sc.date === dateStr && 
-            sc.time === student.regularTime &&
-            sc.type === 'license'
-        );
-        
-        if (!existingLicense) {
-            // Crear licencia automática
-            const newLicense = {
-                id: Date.now() + Math.random(),
-                studentId: student.id,
-                date: dateStr,
-                time: student.regularTime,
-                type: 'license',
-                autoGenerated: true,
-                reason: `Clase perdida - Inscripción tardía desde ${student.startDate}`
-            };
-            
-            specialClasses.push(newLicense);
-            
-            // Agregar crédito al estudiante
-            student.licenseCredits = (student.licenseCredits || 0) + 1;
-            
-            console.log(`✅ Licencia automática creada: ${dateStr} ${student.regularTime} para ${student.name}`);
-        }
-    });
-    
-    console.log(`💳 ${student.name} tiene ahora ${student.licenseCredits} créditos de recuperación`);
-}
-
 // Estadísticas mensuales
 function getMonthlyAttendance(studentId) {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
     
-    // Asistencias de clases regulares
-    const studentRegularClass = regularClasses.find(rc => rc.studentId === studentId);
+    // ✅ ASISTENCIAS DE MÚLTIPLES CLASES REGULARES
+    const studentRegularClasses = regularClasses.filter(rc => rc.studentId === studentId);
     let regularAttendance = [];
-    if (studentRegularClass) {
+    
+    if (studentRegularClasses.length > 0) {
         regularAttendance = attendance.filter(a => {
             const date = new Date(a.date);
-            return date.getMonth() === currentMonth && 
-                date.getFullYear() === currentYear &&
-                a.classId === studentRegularClass.id;
+            const isCurrentMonth = date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+            const isStudentClass = studentRegularClasses.some(rc => rc.id === a.classId);
+            return isCurrentMonth && isStudentClass;
         });
     }
     
@@ -650,40 +721,63 @@ function updateFabAction() {
     }
 }
 
-// NUEVA: Función para verificar disponibilidad de horario en fecha específica
-function isScheduleAvailableOnDate(day, time, date, excludeStudentId = null) {
-    return !students.some(s => 
-        s.id !== excludeStudentId &&
-        s.regularDay === day && 
-        s.regularTime === time &&
-        isStudentActiveOnDate(s, date)
-    );
+// ✅ FUNCIONES PARA MÚLTIPLES HORARIOS
+
+function addSecondSchedule() {
+    document.getElementById('secondScheduleGroup').style.display = 'block';
+    document.getElementById('addScheduleGroup').style.display = 'none';
+    
+    // Llenar opciones de tiempo para segundo horario
+    populateTimeSlots('studentTime2');
+
+    // ✅ AGREGAR VALIDACIÓN AL SEGUNDO HORARIO
+    setTimeout(() => setupMultipleScheduleValidation(), 100);
+    
+    showToast('✅ Segundo horario agregado');
 }
 
-// NUEVA: Obtener información de ocupación de horario
-function getScheduleOccupancyInfo(day, time) {
-    const student = students.find(s => s.regularDay === day && s.regularTime === time);
+function removeSecondSchedule() {
+    document.getElementById('secondScheduleGroup').style.display = 'none';
+    document.getElementById('addScheduleGroup').style.display = 'block';
     
-    if (!student) {
-        return { available: true, message: 'Horario disponible' };
+    // Limpiar valores
+    document.getElementById('studentDay2').value = '';
+    document.getElementById('studentTime2').value = '';
+    
+    showToast('❌ Segundo horario eliminado');
+}
+
+// ✅ Validar que no haya conflictos entre horarios del mismo estudiante
+function validateMultipleSchedules(excludeId = null) {
+    const day1 = parseInt(document.getElementById('studentDay1').value);
+    const time1 = document.getElementById('studentTime1').value;
+    const day2 = parseInt(document.getElementById('studentDay2').value);
+    const time2 = document.getElementById('studentTime2').value;
+    
+    // Si solo hay un horario, validar normalmente
+    if (!day2 || !time2) {
+        return validateUniqueSchedule(day1, time1, excludeId);
     }
     
-    if (student.active) {
-        return { 
-            available: false, 
-            message: `Ocupado por ${student.name} (activo)`,
-            student: student
-        };
+    // Validar que no sean horarios idénticos
+    if (day1 === day2 && time1 === time2) {
+        showToast('❌ Los dos horarios no pueden ser idénticos');
+        return false;
     }
     
-    if (student.deactivatedAt) {
-        return {
-            available: false,
-            message: `Ocupado por ${student.name} hasta ${student.deactivatedAt}`,
-            student: student,
-            availableFrom: student.deactivatedAt
-        };
+    // Validar cada horario individualmente
+    const validation1 = validateUniqueSchedule(day1, time1, excludeId);
+    const validation2 = validateUniqueSchedule(day2, time2, excludeId);
+    
+    if (validation1 === false) {
+        showToast('❌ El primer horario ya está ocupado');
+        return false;
     }
     
-    return { available: true, message: 'Horario disponible' };
+    if (validation2 === false) {
+        showToast('❌ El segundo horario ya está ocupado');
+        return false;
+    }
+    
+    return { schedule1: validation1, schedule2: validation2 };
 }

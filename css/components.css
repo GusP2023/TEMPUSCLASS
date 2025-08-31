@@ -218,6 +218,8 @@
     padding: 1rem;
     height: 100%;
     overflow-y: auto;
+    padding-bottom: 160px; /* ✅ Espacio para bottom-nav (73px) + FAB (90px) */
+    box-sizing: border-box; /* ✅ Incluir padding en el cálculo de altura */
 }
 
 .students-header {
@@ -409,6 +411,52 @@
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
+/* ✅ Estilos para múltiples horarios */
+.schedule-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.schedule-row .schedule-day,
+.schedule-row .schedule-time {
+    flex: 1;
+}
+
+.btn-add-schedule {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px dashed var(--primary);
+    background: transparent;
+    color: var(--primary);
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-add-schedule:hover {
+    background: rgba(30, 58, 138, 0.1);
+    transform: translateY(-1px);
+}
+
+.btn-remove-schedule {
+    background: var(--error);
+    color: white;
+    border: none;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+    margin-left: 0.5rem;
+}
+
+.btn-remove-schedule:hover {
+    background: #dc2626;
+    transform: scale(1.05);
+}
+
 /* Iconos mejorados para contexto */
 .context-info strong::before {
     margin-right: 0.5rem;
@@ -529,6 +577,14 @@
     border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
+/* ✅ Fix para overflow en móviles - Lista de estudiantes completa */
+@media (max-width: 768px) {
+    .students-section {
+        padding-bottom: 180px; /* ✅ Más espacio en móviles */
+        min-height: calc(100vh - 120px); /* ✅ Altura mínima considerando header */
+    }
+}
+
 /* Responsive para móviles */
 @media (max-width: 480px) {
     .students-badges {
@@ -560,6 +616,22 @@
     .attendance-buttons .btn {
         min-width: auto;
         width: 100%;
+    }
+
+    .schedule-row {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .schedule-row .schedule-day,
+    .schedule-row .schedule-time {
+        width: 100%;
+    }
+    
+    .btn-remove-schedule {
+        margin-left: 0;
+        width: 100%;
+        margin-top: 0.5rem;
     }
 }
 

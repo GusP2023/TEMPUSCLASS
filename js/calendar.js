@@ -359,27 +359,46 @@ function findRegularClass(day, time) {
     if (specialClass) {
         return null;
     }
-
-    // Si hay licencia, no mostrar clase regular
-    if (specialClass && specialClass.type === 'recovery') {
-        return null;
-    }
     
-    const student = students.find(s => 
-        s.regularDay === day && 
-        s.regularTime === time &&
-        isStudentActiveOnDate(s, classDate)
-    );
+    // ✅ BUSCAR ESTUDIANTE CON MÚLTIPLES HORARIOS
+    const student = students.find(s => {
+        if (!s.active || !isStudentActiveOnDate(s, classDate)) return false;
+        
+        // Verificar nuevo formato (schedules)
+        if (s.schedules && s.schedules.length > 0) {
+            return s.schedules.some(schedule => 
+                schedule.day === day && schedule.time === time
+            );
+        }
+        
+        // Compatibilidad con formato antiguo
+        return s.regularDay === day && s.regularTime === time;
+    });
     
     if (student) {
-        let regularClass = regularClasses.find(rc => rc.studentId === student.id);
+        // ✅ ENCONTRAR O CREAR CLASE REGULAR PARA ESTE HORARIO ESPECÍFICO
+        let regularClass = regularClasses.find(rc => 
+            rc.studentId === student.id && 
+            rc.day === day && 
+            rc.time === time
+        );
         
         if (!regularClass) {
+            // Determinar scheduleIndex basado en el horario encontrado
+            let scheduleIndex = 0;
+            if (student.schedules && student.schedules.length > 0) {
+                const matchingSchedule = student.schedules.findIndex(s => 
+                    s.day === day && s.time === time
+                );
+                scheduleIndex = matchingSchedule >= 0 ? matchingSchedule : 0;
+            }
+            
             regularClass = {
                 id: Date.now() + Math.random(),
                 studentId: student.id,
-                day: student.regularDay,
-                time: student.regularTime
+                day: day,
+                time: time,
+                scheduleIndex: scheduleIndex
             };
             regularClasses.push(regularClass);
             saveData();
@@ -415,6 +434,25 @@ function findSpecialClass(date, time) {
     }
     
     return null;
+}
+
+// ✅ NUEVA FUNCIÓN AUXILIAR para obtener todos los horarios de un estudiante
+function getStudentSchedules(student) {
+    // Nuevo formato
+    if (student.schedules && student.schedules.length > 0) {
+        return student.schedules;
+    }
+    
+    // Compatibilidad con formato antiguo
+    if (student.regularDay && student.regularTime) {
+        return [{
+            day: student.regularDay,
+            time: student.regularTime,
+            active: true
+        }];
+    }
+    
+    return [];
 }
 
 // Función renderClass modificada para cambiar comportamiento de licencias
@@ -602,6 +640,7 @@ function isSlotAvailable(day, time, isRecovery) {
 
 
 
+// ✅ MODIFICAR función existente openRecoveryModal para mostrar mejor info de horarios
 function openRecoveryModal(date, time, eligibleStudents) {
     const modal = document.getElementById('recoveryModal');
     const select = document.getElementById('recoveryStudent');
@@ -625,7 +664,7 @@ function openRecoveryModal(date, time, eligibleStudents) {
         const conflictInfo = document.createElement('div');
         conflictInfo.style.cssText = 'background: rgba(239, 68, 68, 0.1); padding: 0.75rem; border-radius: 8px; margin: 1rem 0; font-size: 0.875rem;';
         conflictInfo.innerHTML = `
-            <p><strong>❌ Ya hay recuperaciones en este horario:</strong></p>
+            <p><strong>⚠ Ya hay recuperaciones en este horario:</strong></p>
             ${conflicts.recoveries.map(r => `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin: 0.5rem 0;">
                     <span>• ${r.studentName}</span>
@@ -638,15 +677,12 @@ function openRecoveryModal(date, time, eligibleStudents) {
         conflictInfo.className = 'conflict-info';
         modalContent.insertBefore(conflictInfo, modalContent.lastElementChild);
         
-        // Deshabilitar el formulario
         select.disabled = true;
         document.querySelector('#recoveryForm button[type="submit"]').disabled = true;
     } else {
-        // Habilitar el formulario
         select.disabled = false;
         document.querySelector('#recoveryForm button[type="submit"]').disabled = false;
         
-        // Mostrar licencias y clases regulares como información contextual
         const allConflicts = [
             ...conflicts.licenses.map(l => ({ 
                 name: l.studentName, 
@@ -668,10 +704,14 @@ function openRecoveryModal(date, time, eligibleStudents) {
         }
     }
 
-    // Poblar select
+    // ✅ POBLAR SELECT CON INFORMACIÓN DE MÚLTIPLES HORARIOS
     select.innerHTML = '<option value="">Seleccionar alumno...</option>';
     eligibleStudents.forEach(student => {
-        select.innerHTML += `<option value="${student.id}">${student.name} (${student.licenseCredits} créditos)</option>`;
+        const schedules = getStudentSchedules(student);
+        const scheduleText = schedules.length > 1 ? 
+            ` (${schedules.length} horarios)` : '';
+        
+        select.innerHTML += `<option value="${student.id}">${student.name}${scheduleText} (${student.licenseCredits} créditos)</option>`;
     });
 
     modal.classList.add('active');
@@ -876,31 +916,23 @@ function showClassDetails(classData, type) {
                     ).join('')}
                 </div>
             ` : ''}
+
+            <!-- ✅ NUEVA SECCIÓN: Botones para revertir licencia -->
+            <div class="context-info can-schedule">
+                <strong>🔄 Revertir licencia:</strong>
+                <p>¿Te equivocaste al marcar licencia? Puedes cambiarla a presente o ausente.</p>
+            </div>
             
-            ${canScheduleRecovery ? `
-                <div class="context-info can-schedule">
-                    <strong>Agendar recuperación:</strong>
-                    <p>Hay ${studentsWithCredits.length} estudiante(s) con créditos disponibles para recuperación en este horario.</p>
-                    <div class="students-badges">
-                        ${studentsWithCredits.slice(0, 3).map(s => 
-                            `<span class="student-badge">
-                                ${s.name} (${s.licenseCredits} créditos)
-                            </span>`
-                        ).join('')}
-                        ${studentsWithCredits.length > 3 ? `<span class="more-students">+${studentsWithCredits.length - 3} más...</span>` : ''}
-                    </div>
-                </div>
-            ` : studentsWithCredits.length === 0 ? `
-                <div class="context-info no-students">
-                    <strong>Sin estudiantes elegibles:</strong>
-                    <p>No hay estudiantes con créditos disponibles para agendar recuperación.</p>
-                </div>
-            ` : `
-                <div class="context-info cannot-schedule">
-                    <strong>No se puede agendar:</strong>
-                    <p>Ya hay una recuperación programada en este horario.</p>
-                </div>
-            `}
+            <div class="attendance-buttons">
+                <button class="btn btn-present" onclick="revertLicenseToStatus('${classData.id}', 'present', '${classData.date}')">
+                    ✓ Marcar Presente
+                </button>
+                <button class="btn btn-absent" onclick="revertLicenseToStatus('${classData.id}', 'absent', '${classData.date}')">
+                    ✓ Marcar Ausente
+                </button>
+            </div>
+            
+            
         `;
         
         // Footer con botón de agendar si es posible
@@ -1001,4 +1033,71 @@ function updateToggleStates() {
     } else {
         saturdayBtn.classList.remove('active');
     }
+}
+
+// Nueva función para revertir licencias
+function revertLicenseToStatus(licenseId, newStatus, date) {
+    // Buscar la licencia
+    const license = specialClasses.find(sc => sc.id == licenseId);
+    if (!license || license.type !== 'license') {
+        showToast('❌ Error: Licencia no encontrada');
+        return;
+    }
+    
+    // Buscar si existe clase regular para este alumno en este horario
+    const student = students.find(s => s.id === license.studentId);
+    if (!student) {
+        showToast('❌ Error: Estudiante no encontrado');
+        return;
+    }
+    
+    // ✅ BUSCAR CLASE REGULAR ESPECÍFICA PARA ESTE HORARIO
+    let regularClass = regularClasses.find(rc => 
+        rc.studentId === license.studentId &&
+        rc.time === license.time &&
+        rc.day === getSystemDayFromLicenseDate(date, license.time)
+    );
+    
+    // Si no existe, crear clase regular para este horario específico
+    if (!regularClass) {
+        const targetDay = getSystemDayFromLicenseDate(date, license.time);
+        
+        // Verificar que el estudiante tenga este horario en sus schedules
+        const studentSchedules = getStudentSchedules(student);
+        const matchingSchedule = studentSchedules.find(s => 
+            s.day === targetDay && s.time === license.time
+        );
+        
+        if (!matchingSchedule) {
+            showToast('❌ Error: El estudiante no tiene clase regular en este horario');
+            return;
+        }
+        
+        const scheduleIndex = studentSchedules.findIndex(s => 
+            s.day === targetDay && s.time === license.time
+        );
+        
+        regularClass = {
+            id: Date.now() + Math.random(),
+            studentId: license.studentId,
+            day: targetDay,
+            time: license.time,
+            scheduleIndex: scheduleIndex >= 0 ? scheduleIndex : 0
+        };
+        regularClasses.push(regularClass);
+    }
+    
+    // Usar la función existente para marcar asistencia
+    markAttendanceWithDate(regularClass.id, newStatus, date);
+}
+
+// ✅ FUNCIÓN CORREGIDA sin problemas de timezone
+function getSystemDayFromLicenseDate(dateStr, time) {
+    // Parsear fecha manualmente para evitar problemas de timezone
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setHours(0, 0, 0, 0); // Asegurar hora local
+    
+    const dayOfWeek = date.getDay(); // 0=Dom, 1=Lun, etc.
+    return dayOfWeek === 0 ? null : dayOfWeek; // No manejamos domingo
 }
