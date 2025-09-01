@@ -1,0 +1,508 @@
+/* ==========================================
+   ESTILOS PARA PRIMERA VEZ E IMPORTACIÓN
+   ========================================== */
+
+/* Modal de Bienvenida */
+.welcome-modal {
+    max-width: 500px;
+    text-align: center;
+    padding: 2rem 1.5rem;
+}
+
+.welcome-header {
+    margin-bottom: 2rem;
+}
+
+.welcome-header h1 {
+    font-size: 1.5rem;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.welcome-header p {
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+
+.welcome-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.welcome-option {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: linear-gradient(135deg, rgba(30, 58, 138, 0.05) 0%, rgba(30, 58, 138, 0.02) 100%);
+    border: 2px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: left;
+}
+
+.welcome-option:hover {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(30, 58, 138, 0.1) 0%, rgba(30, 58, 138, 0.05) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.15);
+}
+
+.option-icon {
+    font-size: 2rem;
+    min-width: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.option-content {
+    flex: 1;
+}
+
+.option-content h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 0.25rem;
+}
+
+.option-content p {
+    font-size: 0.9rem;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+}
+
+.option-content small {
+    font-size: 0.75rem;
+    color: var(--text-light);
+}
+
+.option-arrow {
+    font-size: 1.5rem;
+    color: var(--primary);
+    font-weight: bold;
+}
+
+.welcome-footer {
+    padding-top: 1rem;
+    border-top: 1px solid var(--bg-secondary);
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+
+/* Modal Múltiples Estudiantes */
+.multiple-students-modal {
+    max-width: 90vw;
+    width: 100%;
+    max-height: 85vh;
+    padding: 1rem;
+}
+
+.multiple-form-container {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.students-grid {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.student-row {
+    display: grid;
+    grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1fr auto;
+    gap: 0.5rem;
+    align-items: end;
+    padding: 1rem;
+    background: var(--bg-main);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    transition: all 0.3s ease;
+}
+
+.student-row.has-conflict {
+    border-color: var(--error);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.student-row-header {
+    grid-column: 1 / -1;
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.row-number {
+    background: var(--primary);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.form-group-inline {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group-inline label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+}
+
+.form-group-inline input,
+.form-group-inline select {
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    transition: border-color 0.3s;
+}
+
+.form-group-inline input:focus,
+.form-group-inline select:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+.form-group-inline input.invalid,
+.form-group-inline select.invalid {
+    border-color: var(--error);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.btn-remove-student {
+    background: var(--error);
+    color: white;
+    border: none;
+    padding: 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+    font-size: 0.8rem;
+}
+
+.btn-remove-student:hover {
+    background: #dc2626;
+    transform: scale(1.05);
+}
+
+.multiple-form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: var(--bg-main);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.btn-add-student {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-add-student:hover {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, #1e2a5a 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+}
+
+.students-counter {
+    font-weight: 500;
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+/* Validación en Tiempo Real */
+.validation-summary {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.validation-summary h3 {
+    color: var(--error);
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.validation-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.validation-list li {
+    color: var(--error);
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+    padding-left: 1rem;
+    position: relative;
+}
+
+.validation-list li::before {
+    content: "⚠️";
+    position: absolute;
+    left: 0;
+}
+
+/* Importación CSV */
+.csv-format-info {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(4, 120, 87, 0.1) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.csv-format-info h3 {
+    color: var(--success);
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.csv-example {
+    background: rgba(0, 0, 0, 0.05);
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+    overflow-x: auto;
+}
+
+.format-notes {
+    font-size: 0.8rem;
+    color: var(--success);
+}
+
+.format-notes p {
+    margin-bottom: 0.25rem;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-bottom: 1rem;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin-top: 0.15rem;
+}
+
+.checkbox-label small {
+    display: block;
+    color: var(--text-light);
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+.import-preview {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+.preview-table th,
+.preview-table td {
+    text-align: left;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.preview-table th {
+    background: var(--primary);
+    color: white;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+}
+
+.preview-table tr.invalid {
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.import-validation {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.validation-errors {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.validation-errors li {
+    color: #d97706;
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+    padding-left: 1rem;
+    position: relative;
+}
+
+.validation-errors li::before {
+    content: "⚠️";
+    position: absolute;
+    left: 0;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .welcome-modal {
+        max-width: 95vw;
+        padding: 1.5rem 1rem;
+    }
+    
+    .welcome-option {
+        padding: 1rem;
+    }
+    
+    .option-icon {
+        font-size: 1.5rem;
+        min-width: 40px;
+    }
+    
+    .option-content h3 {
+        font-size: 1rem;
+    }
+    
+    .multiple-students-modal {
+        max-width: 95vw;
+        padding: 0.5rem;
+        max-height: 90vh;
+    }
+    
+    .student-row {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+        padding: 0.75rem;
+    }
+    
+    .student-row-header {
+        grid-column: 1;
+    }
+    
+    .multiple-form-actions {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .welcome-option {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+    
+    .option-arrow {
+        transform: rotate(90deg);
+    }
+    
+    .csv-example {
+        font-size: 0.7rem;
+    }
+    
+    .preview-table {
+        font-size: 0.7rem;
+    }
+}
+
+/* Animaciones */
+@keyframes slideInFromTop {
+    0% {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.student-row {
+    animation: slideInFromTop 0.3s ease-out;
+}
+
+/* Estados de validación visual */
+.form-group-inline.valid input,
+.form-group-inline.valid select {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.form-group-inline.invalid input,
+.form-group-inline.invalid select {
+    border-color: var(--error);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-top: 2px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}

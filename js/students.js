@@ -14,15 +14,29 @@ function switchTab(tab) {
     });
     event.currentTarget.classList.add('active');
     
-    document.querySelector('.main-content').style.display = tab === 'calendar' ? 'block' : 'none';
-    document.getElementById('studentsSection').style.display = tab === 'students' ? 'block' : 'none';
+    // ✅ CORREGIDO: Ocultar TODAS las secciones primero
+    document.querySelector('.main-content').style.display = 'none';
+    document.getElementById('studentsSection').style.display = 'none';
     
-    if (tab === 'students') {
+    // Ocultar sección de configuración si existe
+    const settingsSection = document.getElementById('settingsSection');
+    if (settingsSection) {
+        settingsSection.style.display = 'none';
+    }
+    
+    // ✅ CORREGIDO: Mostrar solo la sección seleccionada
+    if (tab === 'calendar') {
+        document.querySelector('.main-content').style.display = 'block';
+        updateFabAction();
+    } else if (tab === 'students') {
+        document.getElementById('studentsSection').style.display = 'block';
         renderStudentsList();
         populateTimeSlots();
         updateFabAction();
-    } else if (tab === 'calendar') {
-        updateFabAction();
+    } else if (tab === 'settings') {
+        showSettingsSection();
+    } else if (tab === 'finance') {
+        showToast('Sección Finanzas en desarrollo');
     } else {
         showToast(`Sección ${tab} en desarrollo`);
     }
@@ -893,4 +907,380 @@ function addCreditsToStudent() {
     closeModal();
     
     showToast(`✅ ${amount} crédito${amount > 1 ? 's' : ''} agregado${amount > 1 ? 's' : ''} a ${student.name}. Total: ${student.licenseCredits}`);
+}
+
+// ==========================================
+// FUNCIONES PARA MÚLTIPLES ESTUDIANTES
+// Agregar a students.js
+// ==========================================
+
+function generateTimeOptions() {
+    const times = [
+        '08:30', '09:15', '10:00', '10:45', '11:30',
+        '14:30', '15:15', '16:00', '16:45', '17:30', '18:15', '19:00'
+    ];
+    
+    return times.map(time => `<option value="${time}">${time}</option>`).join('');
+}
+
+function renumberStudentRows() {
+    const rows = document.querySelectorAll('.student-row');
+    rows.forEach((row, index) => {
+        const rowNumber = index + 1;
+        row.dataset.studentIndex = index;
+        
+        const numberDiv = row.querySelector('.row-number');
+        const headerSpan = row.querySelector('.student-row-header span');
+        
+        if (numberDiv) numberDiv.textContent = rowNumber;
+        if (headerSpan) headerSpan.textContent = `Estudiante ${rowNumber}`;
+        
+        // Actualizar botón de eliminar (solo mostrar si es > 3)
+        const removeBtn = row.querySelector('.btn-remove-student');
+        if (removeBtn) {
+            if (rowNumber <= 3) {
+                removeBtn.style.display = 'none';
+            } else {
+                removeBtn.style.display = 'inline-block';
+            }
+        }
+    });
+}
+
+function updateStudentsCounter() {
+    const count = document.querySelectorAll('.student-row').length;
+    const counter = document.getElementById('studentsCounter');
+    if (counter) {
+        counter.textContent = `${count} estudiante${count !== 1 ? 's' : ''}`;
+    }
+}
+
+// 🔍 VALIDACIÓN EN TIEMPO REAL
+function setupMultipleFormValidation() {
+    const form = document.getElementById('multipleStudentsForm');
+    
+    // Evento para validar cuando cambian los campos
+    form.addEventListener('input', debounce(validateAllRows, 500));
+    form.addEventListener('change', validateAllRows);
+}
+
+function setupRowValidation(row) {
+    const inputs = row.querySelectorAll('input, select');
+    
+    inputs.forEach(input => {
+        input.addEventListener('blur', () => validateSingleRow(row));
+        input.addEventListener('change', () => validateSingleRow(row));
+    });
+}
+
+function extractRowData(row) {
+    return {
+        name: row.querySelector('.student-name')?.value?.trim() || '',
+        instrument: row.querySelector('.student-instrument')?.value || '',
+        day1: parseInt(row.querySelector('.schedule-day')?.value) || null,
+        time1: row.querySelector('.schedule-time')?.value || '',
+        day2: parseInt(row.querySelector('.schedule-day-2')?.value) || null,
+        time2: row.querySelector('.schedule-time-2')?.value || '',
+        startDate: row.querySelector('.start-date')?.value || ''
+    };
+}
+
+function checkConflictsWithExistingStudents(data) {
+    const errors = [];
+    const existingSchedules = getAllExistingSchedules();
+    
+    // Verificar primer horario
+    if (data.day1 && data.time1) {
+        const conflict1 = existingSchedules.find(s => 
+            s.day === data.day1 && s.time === data.time1
+        );
+        if (conflict1) {
+            errors.push(`Horario ${getDayName(data.day1)} ${data.time1} ocupado por ${conflict1.studentName}`);
+        }
+    }
+    
+    // Verificar segundo horario
+    if (data.day2 && data.time2) {
+        const conflict2 = existingSchedules.find(s => 
+            s.day === data.day2 && s.time === data.time2
+        );
+        if (conflict2) {
+            errors.push(`Horario ${getDayName(data.day2)} ${data.time2} ocupado por ${conflict2.studentName}`);
+        }
+    }
+    
+    return errors;
+}
+
+function checkConflictsWithOtherRows(currentIndex, currentData) {
+    const errors = [];
+    const allRows = document.querySelectorAll('.student-row');
+    
+    allRows.forEach((row, index) => {
+        if (index === currentIndex) return; // No comparar consigo mismo
+        
+        const otherData = extractRowData(row);
+        const otherStudentNumber = index + 1;
+        
+        // Verificar conflictos de horario entre filas
+        if (currentData.day1 && currentData.time1) {
+            // Conflicto con primer horario del otro
+            if (otherData.day1 === currentData.day1 && otherData.time1 === currentData.time1) {
+                errors.push(`Conflicto con Estudiante ${otherStudentNumber}: ${getDayName(currentData.day1)} ${currentData.time1}`);
+            }
+            // Conflicto con segundo horario del otro
+            if (otherData.day2 === currentData.day1 && otherData.time2 === currentData.time1) {
+                errors.push(`Conflicto con Estudiante ${otherStudentNumber}: ${getDayName(currentData.day1)} ${currentData.time1}`);
+            }
+        }
+        
+        if (currentData.day2 && currentData.time2) {
+            // Conflicto con primer horario del otro
+            if (otherData.day1 === currentData.day2 && otherData.time1 === currentData.time2) {
+                errors.push(`Conflicto con Estudiante ${otherStudentNumber}: ${getDayName(currentData.day2)} ${currentData.time2}`);
+            }
+            // Conflicto con segundo horario del otro
+            if (otherData.day2 === currentData.day2 && otherData.time2 === currentData.time2) {
+                errors.push(`Conflicto con Estudiante ${otherStudentNumber}: ${getDayName(currentData.day2)} ${currentData.time2}`);
+            }
+        }
+    });
+    
+    return errors;
+}
+
+function updateRowValidationUI(row, errors) {
+    const inputs = row.querySelectorAll('input, select');
+    
+    if (errors.length > 0) {
+        row.classList.add('has-conflict');
+        
+        inputs.forEach(input => {
+            const formGroup = input.closest('.form-group-inline');
+            if (formGroup) {
+                formGroup.classList.remove('valid');
+                formGroup.classList.add('invalid');
+            }
+        });
+    } else {
+        row.classList.remove('has-conflict');
+        
+        inputs.forEach(input => {
+            const formGroup = input.closest('.form-group-inline');
+            if (formGroup) {
+                formGroup.classList.remove('invalid');
+                if (input.value) {
+                    formGroup.classList.add('valid');
+                }
+            }
+        });
+    }
+}
+
+function updateValidationSummary(errors) {
+    const summaryDiv = document.getElementById('validationSummary');
+    
+    if (errors.length === 0) {
+        summaryDiv.style.display = 'none';
+        return;
+    }
+    
+    summaryDiv.innerHTML = `
+        <h3>⚠️ Errores que debes corregir:</h3>
+        <ul class="validation-list">
+            ${errors.map(error => `<li>${error}</li>`).join('')}
+        </ul>
+    `;
+    summaryDiv.style.display = 'block';
+}
+
+function collectAllStudentsData() {
+    const rows = document.querySelectorAll('.student-row');
+    const studentsData = [];
+    
+    rows.forEach(row => {
+        const data = extractRowData(row);
+        
+        // Solo agregar si tiene datos mínimos
+        if (data.name && data.instrument && data.day1 && data.time1) {
+            const schedules = [{ day: data.day1, time: data.time1, active: true }];
+            
+            if (data.day2 && data.time2) {
+                schedules.push({ day: data.day2, time: data.time2, active: true });
+            }
+            
+            studentsData.push({
+                name: data.name,
+                instrument: data.instrument,
+                schedules: schedules,
+                startDate: data.startDate || null
+            });
+        }
+    });
+    
+    return studentsData;
+}
+
+// 🛠️ FUNCIONES AUXILIARES
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Event listener para importar CSV
+document.addEventListener('DOMContentLoaded', () => {
+    const importForm = document.getElementById('importForm');
+    if (importForm) {
+        importForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            importCSVData();
+        });
+    }
+});
+
+// CSS para animación de salida
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideOutToRight {
+        0% {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        100% {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+
+// ==========================================
+// FUNCIONES DE CONFIGURACIÓN/AJUSTES
+// ==========================================
+
+function showSettingsSection() {
+    // ✅ CORREGIDO: NO ocultar otras secciones aquí, switchTab() ya lo hace
+    
+    let settingsSection = document.getElementById('settingsSection');
+    
+    if (!settingsSection) {
+        settingsSection = document.createElement('div');
+        settingsSection.id = 'settingsSection';
+        settingsSection.className = 'students-section';
+        
+        settingsSection.innerHTML = `
+            <div class="students-header">
+                <h2>⚙️ Configuración</h2>
+            </div>
+            
+            <div class="settings-content">
+                <div class="student-card">
+                    <div class="student-header">
+                        <div class="student-name">📊 Datos</div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="exportToCSV()" style="flex: 1; min-width: 150px;">
+                            📤 Exportar CSV
+                        </button>
+                        <button class="btn btn-secondary" onclick="openImportModal()" style="flex: 1; min-width: 150px;">
+                            📥 Importar CSV
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="student-card">
+                    <div class="student-header">
+                        <div class="student-name">👥 Estudiantes</div>
+                    </div>
+                    <div style="margin-top: 0.5rem; color: var(--text-light); font-size: 0.9rem;">
+                        <p>• Total: <strong>${students.length}</strong></p>
+                        <p>• Activos: <strong>${students.filter(s => s.active).length}</strong></p>
+                        <p>• Créditos totales: <strong>${students.reduce((sum, s) => sum + (s.licenseCredits || 0), 0)}</strong></p>
+                    </div>
+                </div>
+                
+                <div class="student-card">
+                    <div class="student-header">
+                        <div class="student-name">📅 Clases</div>
+                    </div>
+                    <div style="margin-top: 0.5rem; color: var(--text-light); font-size: 0.9rem;">
+                        <p>• Regulares: <strong>${regularClasses.length}</strong></p>
+                        <p>• Recuperaciones: <strong>${specialClasses.filter(s => s.type === 'recovery').length}</strong></p>
+                        <p>• Licencias: <strong>${specialClasses.filter(s => s.type === 'license').length}</strong></p>
+                    </div>
+                </div>
+                
+                <div class="student-card" style="border: 1px solid var(--error); background: rgba(239, 68, 68, 0.05);">
+                    <div class="student-header">
+                        <div class="student-name" style="color: var(--error);">⚠️ Zona Peligrosa</div>
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-light); margin: 0.5rem 0;">
+                        Estas acciones no se pueden deshacer
+                    </p>
+                    <button class="btn btn-absent" onclick="confirmResetApp()" style="width: 100%;">
+                        🗑️ Borrar Todos los Datos
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(settingsSection);
+    }
+    
+    // ✅ CORREGIDO: Solo actualizar estadísticas y mostrar la sección
+    updateSettingsStats();
+    settingsSection.style.display = 'block';
+    updateFabAction();
+}   
+
+function updateSettingsStats() {
+    const settingsSection = document.getElementById('settingsSection');
+    if (!settingsSection) return;
+    
+    // Actualizar estadísticas dinámicamente
+    const statsHTML = settingsSection.innerHTML
+        .replace(/Total: <strong>\d+<\/strong>/, `Total: <strong>${students.length}</strong>`)
+        .replace(/Activos: <strong>\d+<\/strong>/, `Activos: <strong>${students.filter(s => s.active).length}</strong>`)
+        .replace(/Créditos totales: <strong>\d+<\/strong>/, `Créditos totales: <strong>${students.reduce((sum, s) => sum + (s.licenseCredits || 0), 0)}</strong>`)
+        .replace(/Regulares: <strong>\d+<\/strong>/, `Regulares: <strong>${regularClasses.length}</strong>`)
+        .replace(/Recuperaciones: <strong>\d+<\/strong>/, `Recuperaciones: <strong>${specialClasses.filter(s => s.type === 'recovery').length}</strong>`)
+        .replace(/Licencias: <strong>\d+<\/strong>/, `Licencias: <strong>${specialClasses.filter(s => s.type === 'license').length}</strong>`);
+    
+    settingsSection.innerHTML = statsHTML;
+}
+
+function confirmResetApp() {
+    const confirmation = prompt(
+        'Esta acción BORRARÁ TODOS LOS DATOS permanentemente.\n\n' +
+        'Escribe "BORRAR TODO" para confirmar:'
+    );
+    
+    if (confirmation === 'BORRAR TODO') {
+        // Limpiar todos los datos
+        students.length = 0;
+        regularClasses.length = 0;
+        specialClasses.length = 0;
+        attendance.length = 0;
+        
+        // Limpiar localStorage
+        localStorage.removeItem('students');
+        localStorage.removeItem('regularClasses');
+        localStorage.removeItem('specialClasses');
+        localStorage.removeItem('attendance');
+        localStorage.removeItem('appInitialized');
+        localStorage.removeItem('creditHistory');
+        
+        // Recargar página
+        window.location.reload();
+    } else {
+        showToast('❌ Cancelado - Los datos no fueron borrados');
+    }
 }

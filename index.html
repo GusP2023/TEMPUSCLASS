@@ -15,8 +15,163 @@
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/calendar.css">
+    <link rel="stylesheet" href="css/first-time.css">
 </head>
 <body>
+
+    <!-- Modal Primera Vez (Bienvenida) -->
+    <div class="modal" id="firstTimeModal">
+        <div class="modal-content welcome-modal">
+            <div class="welcome-header">
+                <h1>🎵 ¡Bienvenido a MusicClass Manager!</h1>
+                <p>Sistema de gestión de clases de música</p>
+            </div>
+            
+            <div class="welcome-options">
+                <div class="welcome-option" onclick="openMultipleStudentsForm()">
+                    <div class="option-icon">👥</div>
+                    <div class="option-content">
+                        <h3>Crear Múltiples Alumnos</h3>
+                        <p>Configura todos tus estudiantes de una vez</p>
+                        <small>Ideal para configuración inicial</small>
+                    </div>
+                    <div class="option-arrow">→</div>
+                </div>
+                
+                <div class="welcome-option" onclick="openImportModal()">
+                    <div class="option-icon">📊</div>
+                    <div class="option-content">
+                        <h3>Importar desde CSV</h3>
+                        <p>Sube un archivo de Excel/CSV con tus datos</p>
+                        <small>Formato: Nombre, Instrumento, Horarios...</small>
+                    </div>
+                    <div class="option-arrow">→</div>
+                </div>
+                
+                <div class="welcome-option" onclick="startFromScratch()">
+                    <div class="option-icon">🎯</div>
+                    <div class="option-content">
+                        <h3>Empezar desde Cero</h3>
+                        <p>Comenzar con el calendario vacío</p>
+                        <small>Agregar alumnos uno por uno después</small>
+                    </div>
+                    <div class="option-arrow">→</div>
+                </div>
+            </div>
+            
+            <div class="welcome-footer">
+                <p>💡 <strong>Tip:</strong> Siempre podrás importar/exportar tus datos desde Ajustes</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Creación Múltiple -->
+    <div class="modal" id="multipleStudentsModal">
+        <div class="modal-content multiple-students-modal">
+            <div class="modal-header">
+                <h2>📝 Configuración Inicial - Múltiples Alumnos</h2>
+                <p>Crea todos tus estudiantes de una vez</p>
+            </div>
+            
+            <div class="multiple-form-container">
+                <form id="multipleStudentsForm">
+                    <div class="students-grid" id="studentsGrid">
+                        <!-- Se genera dinámicamente -->
+                    </div>
+                    
+                    <div class="multiple-form-actions">
+                        <button type="button" class="btn-add-student" onclick="addStudentRow()">
+                            ➕ Agregar Otro Alumno
+                        </button>
+                        <div class="students-counter">
+                            <span id="studentsCounter">3 estudiantes</span>
+                        </div>
+                    </div>
+                    
+                    <div class="validation-summary" id="validationSummary" style="display: none;">
+                        <!-- Conflictos de horarios se muestran aquí -->
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="goBackToWelcome()">
+                            ← Volver
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            ✅ Crear Todos los Alumnos
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Import CSV -->
+    <div class="modal" id="importModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📊 Importar desde CSV/Excel</h2>
+            </div>
+            
+            <div class="import-container">
+                <div class="csv-format-info">
+                    <h3>📋 Formato Requerido:</h3>
+                    <div class="csv-example">
+                        <code>Nombre,Instrumento,Dia1,Hora1,Dia2,Hora2,FechaInicio</code>
+                        <br>
+                        <code>Juan Pérez,Guitarra,1,14:30,3,16:00,2025-01-01</code>
+                    </div>
+                    <div class="format-notes">
+                        <p><strong>Días:</strong> 1=Lun, 2=Mar, 3=Mié, 4=Jue, 5=Vie, 6=Sáb</p>
+                        <p><strong>Horas:</strong> Formato 24h (ej: 14:30, 16:00)</p>
+                        <p><strong>Fecha:</strong> YYYY-MM-DD (opcional)</p>
+                    </div>
+                </div>
+                
+                <form id="importForm">
+                    <div class="form-group">
+                        <label class="form-label">Seleccionar archivo CSV</label>
+                        <input type="file" class="form-input" id="csvFile" accept=".csv,.xlsx,.xls" required>
+                    </div>
+                    
+                    <div class="import-options">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="replaceAll" />
+                            <span>Reemplazar todos los datos existentes</span>
+                            <small>Si no está marcado, se fusionará con datos actuales</small>
+                        </label>
+                    </div>
+                    
+                    <div class="import-preview" id="importPreview" style="display: none;">
+                        <h3>👀 Vista Previa:</h3>
+                        <div class="preview-table" id="previewTable">
+                            <!-- Tabla se genera dinámicamente -->
+                        </div>
+                    </div>
+                    
+                    <div class="import-validation" id="importValidation" style="display: none;">
+                        <!-- Errores de validación se muestran aquí -->
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeImportModal()">
+                            Cancelar
+                        </button>
+                        <button type="button" class="btn btn-primary" id="previewBtn" onclick="previewCSV()" style="display: none;">
+                            👀 Vista Previa
+                        </button>
+                        <button type="submit" class="btn btn-success" id="importBtn" style="display: none;">
+                            ✅ Importar Datos
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Download Helper (invisible) -->
+    <a id="downloadHelper" style="display: none;"></a>
+
+
     <!-- Header -->
     <div class="header">
         <div class="header-top">
@@ -316,11 +471,15 @@
     </div>
     
 <!-- JavaScript Files - ORDEN IMPORTANTE -->
-<script src="js/app.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/app.js"></script>
+<script src="js/first-time.js"></script>
+<script src="js/multiple-students.js"></script>
 <script src="js/calendar.js"></script>
 <script src="js/students.js"></script>
 <script src="js/attendance.js"></script>
+
+
 
 </body>
 </html>

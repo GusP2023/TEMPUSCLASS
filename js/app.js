@@ -60,6 +60,17 @@ function initApp() {
     regularClasses = JSON.parse(localStorage.getItem('regularClasses') || '[]');
     specialClasses = JSON.parse(localStorage.getItem('specialClasses') || '[]');
     attendance = JSON.parse(localStorage.getItem('attendance') || '[]');
+
+    // ✅ NUEVA: Detectar primera vez después de cargar datos
+    setTimeout(() => {
+        if (detectFirstTime()) {
+            // Si es primera vez, el modal se muestra automáticamente
+            console.log('🎵 Primera vez detectada - Mostrando modal de bienvenida');
+        } else {
+            // Si no es primera vez, proceder normalmente
+            console.log('📚 Datos existentes cargados');
+        }
+    }, 500);
 }
 
 function saveData() {
@@ -69,28 +80,83 @@ function saveData() {
     localStorage.setItem('attendance', JSON.stringify(attendance));
 }
 
+function detectFirstTime() {
+    const hasData = students.length > 0 || 
+                   regularClasses.length > 0 || 
+                   specialClasses.length > 0 ||
+                   localStorage.getItem('appInitialized');
+    
+    if (!hasData) {
+        showFirstTimeModal();
+        return true;
+    }
+    return false;
+}
+
 function setupEventListeners() {
-    document.getElementById('recoveryForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        saveRecoveryClass();
-    });
+    // Recovery form - verificar que existe
+    const recoveryForm = document.getElementById('recoveryForm');
+    if (recoveryForm) {
+        recoveryForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveRecoveryClass();
+        });
+    }
 
-    document.getElementById('studentForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        saveStudent();
-    });
+    // Student form - verificar que existe
+    const studentForm = document.getElementById('studentForm');
+    if (studentForm) {
+        studentForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveStudent();
+        });
+    }
 
-    // Validación en tiempo real (NUEVO)
     setupScheduleValidation();
 
-    // Cerrar modales al hacer click fuera
+    // ✅ CORREGIDO: Event listeners para import/export solo si existen
+    const exportButton = document.getElementById('exportDataBtn');
+    if (exportButton) {
+        exportButton.addEventListener('click', exportToCSV);
+    }
+
+    // ✅ NUEVO: Event listener para form de importación
+    const importForm = document.getElementById('importForm');
+    if (importForm) {
+        importForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            importCSVData();
+        });
+    }
+
+    // ✅ NUEVO: Event listener para form de créditos
+    const creditsForm = document.getElementById('creditsForm');
+    if (creditsForm) {
+        creditsForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            addCreditsToStudent();
+        });
+    }
+
+    // Cerrar modales al hacer click fuera (mantener)
     document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', (e) => {
+            // ✅ MODIFICADO: No cerrar modal de primera vez
+            if (modal.id === 'firstTimeModal') {
+                return; // No permitir cerrar modal de primera vez
+            }
+            
             if (e.target === modal) {
                 closeModal();
             }
         });
     });
+}
+
+// ✅ NUEVA: Función para configurar validación de horarios de forma segura
+function setupScheduleValidation() {
+    // Esta función se puede llamar desde otros archivos cuando sea necesario
+    // Por ahora está vacía, se puede implementar validación específica aquí
 }
 
 // LIMPIAR: Reset variables al cerrar modal
@@ -186,5 +252,170 @@ function deleteRecovery(recoveryId) {
         renderWeekView();
         closeModal();
         showToast('Recuperación eliminada. Crédito restaurado.');
+    }
+}
+
+// ==========================================
+// FUNCIONES PARA PRIMERA VEZ E IMPORT/EXPORT
+// Agregar a app.js
+// ==========================================
+
+// 🔍 DETECCIÓN DE PRIMERA VEZ
+
+
+function getCurrentDateString() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+}
+
+function isValidTimeFormat(time) {
+    return /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time);
+}
+
+function isValidDateFormat(date) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(date) && !isNaN(new Date(date));
+}
+
+function getAllExistingSchedules() {
+    const schedules = [];
+    
+    students.forEach(student => {
+        const studentSchedules = getStudentSchedules(student);
+        studentSchedules.forEach(schedule => {
+            schedules.push({
+                studentId: student.id,
+                studentName: student.name,
+                day: schedule.day,
+                time: schedule.time
+            });
+        });
+    });
+    
+    return schedules;
+}
+
+function findStudentBySchedule(day, time) {
+    return students.find(student => {
+        const schedules = getStudentSchedules(student);
+        return schedules.some(s => s.day === day && s.time === time);
+    });
+}
+
+function checkInternalConflicts(validRows, errors) {
+    const scheduleMap = new Map();
+    
+    validRows.forEach(row => {
+        row.schedules.forEach(schedule => {
+            const key = `${schedule.day}-${schedule.time}`;
+            
+            if (scheduleMap.has(key)) {
+                const conflictRow = scheduleMap.get(key);
+                errors.push(`Conflicto entre filas ${conflictRow.rowNumber} y ${row.rowNumber}: horario ${getDayName(schedule.day)} ${schedule.time}`);
+            } else {
+                scheduleMap.set(key, row);
+            }
+        });
+    });
+}
+
+function showValidationResults(validationResult) {
+    const validationDiv = document.getElementById('importValidation');
+    
+    if (validationResult.errors.length === 0 && validationResult.warnings.length === 0) {
+        validationDiv.style.display = 'none';
+        return;
+    }
+    
+    let validationHTML = '';
+    
+    if (validationResult.errors.length > 0) {
+        validationHTML += `
+            <h3 style="color: var(--error); margin-bottom: 0.5rem;">
+                ❌ Errores encontrados (${validationResult.errors.length}):
+            </h3>
+            <ul class="validation-errors">
+                ${validationResult.errors.map(error => `<li>${error}</li>`).join('')}
+            </ul>
+        `;
+    }
+    
+    if (validationResult.warnings.length > 0) {
+        validationHTML += `
+            <h3 style="color: var(--accent); margin-bottom: 0.5rem;">
+                ⚠️ Advertencias (${validationResult.warnings.length}):
+            </h3>
+            <ul class="validation-errors">
+                ${validationResult.warnings.map(warning => `<li>${warning}</li>`).join('')}
+            </ul>
+        `;
+    }
+    
+    const summary = `
+        <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-main); border-radius: 6px;">
+            <strong>Resumen:</strong> 
+            ${validationResult.validRows.length} de ${validationResult.totalRows} filas válidas para importar
+        </div>
+    `;
+    
+    validationDiv.innerHTML = validationHTML + summary;
+    validationDiv.style.display = 'block';
+}
+
+function readFileAsync(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = () => reject(new Error('Error al leer el archivo'));
+        reader.readAsText(file);
+    });
+}
+
+function clearAllData() {
+    students.length = 0;
+    regularClasses.length = 0;
+    specialClasses.length = 0;
+    attendance.length = 0;
+}
+
+async function processImportData(validRows) {
+    for (const row of validRows) {
+        const newStudentId = Date.now() + Math.floor(Math.random() * 1000);
+        
+        // Crear estudiante
+        const newStudent = {
+            id: newStudentId,
+            name: row.Nombre.trim(),
+            instrument: row.Instrumento.trim(),
+            schedules: row.schedules,
+            active: row.Estado !== 'Inactivo',
+            licenseCredits: parseInt(row.Creditos) || 0,
+            createdAt: new Date().toISOString(),
+            startDate: row.FechaInicio || null
+        };
+        
+        students.push(newStudent);
+        
+        // Crear clases regulares
+        row.schedules.forEach((schedule, index) => {
+            const newRegularClass = {
+                id: Date.now() + Math.floor(Math.random() * 1000) + index + 1,
+                studentId: newStudentId,
+                day: schedule.day,
+                time: schedule.time,
+                scheduleIndex: index
+            };
+            
+            regularClasses.push(newRegularClass);
+        });
+        
+        // Generar licencias automáticas si tiene fecha de inicio
+        if (row.FechaInicio) {
+            row.schedules.forEach((schedule, index) => {
+                generateAutoLicensesForSchedule(newStudent, schedule, index);
+            });
+        }
     }
 }
