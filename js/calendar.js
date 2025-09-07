@@ -414,7 +414,7 @@ function findRegularClass(day, time) {
 }
 
 function findSpecialClass(date, time) {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(date); 
     const specials = specialClasses.filter(c => c.date === dateStr && c.time === time);
     
     if (specials.length === 0) return null;

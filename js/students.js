@@ -682,9 +682,10 @@ function cancelFutureClasses(studentId, fromDate) {
 
 // Estadísticas mensuales
 function getMonthlyAttendance(studentId) {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+    const currentDate = getLocalDateString();
+    const [year, month, day] = currentDate.split('-').map(Number);
+    const currentMonth = month - 1; // Porque getMonth() devuelve 0-11
+    const currentYear = year;
     
     // ✅ ASISTENCIAS DE MÚLTIPLES CLASES REGULARES
     const studentRegularClasses = regularClasses.filter(rc => rc.studentId === studentId);
@@ -796,7 +797,7 @@ function validateMultipleSchedules(excludeId = null) {
     return { schedule1: validation1, schedule2: validation2 };
 }
 
-// ✅ GESTIÓN DE CRÉDITOS
+// 🎯 GESTIÓN DE CRÉDITOS ACTUALIZADA
 function openCreditsModal() {
     const modal = document.getElementById('creditsModal');
     const select = document.getElementById('creditsStudent');
@@ -842,28 +843,101 @@ function showCurrentCreditsInfo() {
         sc.studentId === studentId && sc.type === 'license'
     );
     
+    // Recuperaciones pendientes vs atendidas
+    const attendedRecoveries = recoveries.filter(recovery => {
+        const attendanceRecord = attendance.find(a => 
+            a.classId === recovery.id && a.status === 'present'
+        );
+        return attendanceRecord;
+    });
+    
     infoDiv.innerHTML = `
         <p><strong>Estado actual de ${student.name}:</strong></p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem; font-size: 0.8rem;">
-            <div>• Créditos disponibles: <strong>${currentCredits}</strong></div>
-            <div>• Total licencias: <strong>${licenses.length}</strong></div>
-            <div>• Recuperaciones agendadas: <strong>${recoveries.length}</strong></div>
-            <div>• Balance: <strong>${currentCredits >= 0 ? 'Positivo' : 'Negativo'}</strong></div>
+            <div>💳 Créditos disponibles: <strong>${currentCredits}</strong></div>
+            <div>📋 Total licencias: <strong>${licenses.length}</strong></div>
+            <div>🔄 Recuperaciones agendadas: <strong>${recoveries.length}</strong></div>
+            <div>✅ Recuperaciones atendidas: <strong>${attendedRecoveries.length}</strong></div>
         </div>
+        ${currentCredits < 0 ? `
+            <div style="color: var(--error); font-size: 0.8rem; margin-top: 0.5rem;">
+                ⚠️ <strong>Créditos negativos:</strong> El estudiante debe ${Math.abs(currentCredits)} crédito${Math.abs(currentCredits) > 1 ? 's' : ''}
+            </div>
+        ` : ''}
     `;
     infoDiv.style.display = 'block';
 }
 
-// Event listener para el form
-document.addEventListener('DOMContentLoaded', () => {
-    const creditsForm = document.getElementById('creditsForm');
-    if (creditsForm) {
-        creditsForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            addCreditsToStudent();
-        });
+// // Event listener para el form
+// document.addEventListener('DOMContentLoaded', () => {
+//     const creditsForm = document.getElementById('creditsForm');
+//     if (creditsForm) {
+//         creditsForm.addEventListener('submit', (e) => {
+//             e.preventDefault();
+//             addCreditsToStudent();
+//         });
+//     }
+// });
+
+function removeCreditsFromStudent() {
+    const studentId = parseInt(document.getElementById('creditsStudent').value);
+    const amount = parseInt(document.getElementById('creditsAmount').value);
+    const reason = document.getElementById('creditsReason').value.trim();
+    
+    if (!studentId || !amount || amount <= 0) {
+        showToast('Por favor completa los campos obligatorios');
+        return;
     }
-});
+    
+    const student = students.find(s => s.id === studentId);
+    if (!student) {
+        showToast('Estudiante no encontrado');
+        return;
+    }
+    
+    const currentCredits = student.licenseCredits || 0;
+    
+    // Validar que no queden créditos negativos
+    if (currentCredits < amount) {
+        showToast(`❌ No se puede quitar ${amount} créditos. El estudiante solo tiene ${currentCredits} créditos disponibles.`);
+        return;
+    }
+    
+    // Confirmar operación
+    const confirmMessage = `¿Quitar ${amount} crédito${amount > 1 ? 's' : ''} de ${student.name}?\n\nCréditos actuales: ${currentCredits}\nCréditos después: ${currentCredits - amount}`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    // Quitar créditos
+    const previousCredits = student.licenseCredits;
+    student.licenseCredits = currentCredits - amount;
+    
+    // Crear registro de la operación
+    const creditRecord = {
+        id: Date.now(),
+        studentId: studentId,
+        amount: amount,
+        operation: 'remove',
+        reason: reason || 'Créditos removidos manualmente',
+        date: new Date().toISOString().split('T')[0],
+        timestamp: Date.now(),
+        previousCredits: previousCredits,
+        newCredits: student.licenseCredits
+    };
+    
+    // Guardar en localStorage para auditoría
+    let creditHistory = JSON.parse(localStorage.getItem('creditHistory') || '[]');
+    creditHistory.push(creditRecord);
+    localStorage.setItem('creditHistory', JSON.stringify(creditHistory));
+    
+    saveData();
+    renderStudentsList();
+    closeModal();
+    
+    showToast(`✅ ${amount} crédito${amount > 1 ? 's' : ''} removido${amount > 1 ? 's' : ''} de ${student.name}. Total: ${student.licenseCredits}`);
+}
 
 function addCreditsToStudent() {
     const studentId = parseInt(document.getElementById('creditsStudent').value);
@@ -885,19 +959,20 @@ function addCreditsToStudent() {
     const previousCredits = student.licenseCredits || 0;
     student.licenseCredits = previousCredits + amount;
     
-    // Crear registro de la operación (opcional, para auditoría)
+    // Crear registro de la operación
     const creditRecord = {
         id: Date.now(),
         studentId: studentId,
         amount: amount,
-        reason: reason || 'Ajuste manual de créditos',
+        operation: 'add',
+        reason: reason || 'Créditos agregados manualmente',
         date: new Date().toISOString().split('T')[0],
         timestamp: Date.now(),
         previousCredits: previousCredits,
         newCredits: student.licenseCredits
     };
     
-    // Guardar en localStorage para auditoría (opcional)
+    // Guardar en localStorage para auditoría
     let creditHistory = JSON.parse(localStorage.getItem('creditHistory') || '[]');
     creditHistory.push(creditRecord);
     localStorage.setItem('creditHistory', JSON.stringify(creditHistory));
@@ -935,10 +1010,10 @@ function renumberStudentRows() {
         if (numberDiv) numberDiv.textContent = rowNumber;
         if (headerSpan) headerSpan.textContent = `Estudiante ${rowNumber}`;
         
-        // Actualizar botón de eliminar (solo mostrar si es > 3)
+        // ✅ CAMBIO: Botón eliminar visible solo cuando hay más de 1
         const removeBtn = row.querySelector('.btn-remove-student');
         if (removeBtn) {
-            if (rowNumber <= 3) {
+            if (rowNumber <= 1) {
                 removeBtn.style.display = 'none';
             } else {
                 removeBtn.style.display = 'inline-block';
@@ -1094,6 +1169,7 @@ function updateValidationSummary(errors) {
     summaryDiv.style.display = 'block';
 }
 
+// Agregar validación mínima en collectAllStudentsData()
 function collectAllStudentsData() {
     const rows = document.querySelectorAll('.student-row');
     const studentsData = [];
@@ -1101,7 +1177,6 @@ function collectAllStudentsData() {
     rows.forEach(row => {
         const data = extractRowData(row);
         
-        // Solo agregar si tiene datos mínimos
         if (data.name && data.instrument && data.day1 && data.time1) {
             const schedules = [{ day: data.day1, time: data.time1, active: true }];
             
@@ -1119,6 +1194,16 @@ function collectAllStudentsData() {
     });
     
     return studentsData;
+}
+
+function openMultipleStudentsFromSection() {
+    const modal = document.getElementById('multipleStudentsModal');
+    if (modal) {
+        modal.classList.add('active');
+        initializeMultipleStudentsForm();
+    } else {
+        showToast('❌ Modal de múltiples estudiantes no encontrado');
+    }
 }
 
 // 🛠️ FUNCIONES AUXILIARES
@@ -1192,6 +1277,9 @@ function showSettingsSection() {
                         </button>
                         <button class="btn btn-secondary" onclick="openImportModal()" style="flex: 1; min-width: 150px;">
                             📥 Importar CSV
+                        </button>
+                        <button class="btn btn-primary" onclick="openMultipleStudentsFromSection()" style="flex: 1; min-width: 150px;">
+                            👥 Múltiples Estudiantes
                         </button>
                     </div>
                 </div>

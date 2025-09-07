@@ -44,9 +44,23 @@ function startFromScratch() {
 
 function goBackToWelcome() {
     closeModal(); // Cerrar modal actual
-    setTimeout(() => {
-        showFirstTimeModal();
-    }, 200);
+    
+    // ✅ CORREGIDO: Solo mostrar bienvenida si realmente es primera vez
+    const hasData = students.length > 0 || 
+                   regularClasses.length > 0 || 
+                   specialClasses.length > 0 ||
+                   localStorage.getItem('appInitialized');
+    
+    if (!hasData) {
+        // Si realmente no hay datos, mostrar bienvenida
+        setTimeout(() => {
+            showFirstTimeModal();
+        }, 200);
+    } else {
+        // Si ya hay datos, simplemente cerrar y volver al calendario
+        renderWeekView();
+        showToast('✅ Cancelado - Volviendo al calendario');
+    }
 }
 
 // 📊 EXPORTACIÓN A CSV

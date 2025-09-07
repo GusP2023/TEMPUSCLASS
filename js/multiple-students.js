@@ -12,20 +12,15 @@ function initializeMultipleStudentsForm() {
     
     grid.innerHTML = '';
     
-    // Crear 3 filas iniciales
-    for (let i = 0; i < 3; i++) {
-        addStudentRow();
-    }
+    // ✅ CAMBIO: Crear 1 fila inicial en vez de 3
+    addStudentRow();
     
     updateStudentsCounter();
     setupMultipleFormValidation();
     
-    // ✅ CORREGIDO: Event listener con verificación
     const form = document.getElementById('multipleStudentsForm');
     if (form) {
-        // Remover event listener anterior si existe
         form.removeEventListener('submit', handleMultipleStudentsSubmit);
-        // Agregar nuevo event listener
         form.addEventListener('submit', handleMultipleStudentsSubmit);
     }
 }
@@ -47,7 +42,7 @@ function addStudentRow() {
         <div class="student-row-header">
             <div class="row-number">${rowCount}</div>
             <span>Estudiante ${rowCount}</span>
-            ${rowCount > 3 ? `<button type="button" class="btn-remove-student" onclick="removeStudentRow(this)">✕</button>` : ''}
+            ${rowCount > 1 ? `<button type="button" class="btn-remove-student" onclick="removeStudentRow(this)">✕</button>` : ''}
         </div>
         
         <div class="form-group-inline">

@@ -1,5 +1,5 @@
 function markAttendance(classId, status) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const classData = regularClasses.find(c => c.id === classId);
     
     if (!classData) {
@@ -409,7 +409,7 @@ function refreshCalendarVisualStates() {
 }
 
 function hasAttendance(classData) {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     return attendance.some(a => a.classId === classData.id && a.date === today);
 }
 
