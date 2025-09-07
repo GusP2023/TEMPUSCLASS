@@ -352,6 +352,7 @@ function changeWeek(direction) {
 function findRegularClass(day, time) {
     const weekStartDate = getStartOfWeek(currentWeek);
     const classDate = getClassDateInWeek(day, weekStartDate);
+    const dateStr = getLocalDateString(classDate);
     
     // Si hay cualquier special class, no mostrar clase regular
     const specialClass = findSpecialClass(classDate, time);
@@ -359,57 +360,89 @@ function findRegularClass(day, time) {
         return null;
     }
     
-    // ✅ BUSCAR ESTUDIANTE CON MÚLTIPLES HORARIOS
+    // ✅ BUSCAR estudiante considerando historial de horarios
     const student = students.find(s => {
         if (!s.active || !isStudentActiveOnDate(s, classDate)) return false;
         
-        // Verificar nuevo formato (schedules)
-        if (s.schedules && s.schedules.length > 0) {
-            return s.schedules.some(schedule => 
-                schedule.day === day && schedule.time === time
-            );
-        }
+        // ✅ OBTENER horarios vigentes para esta fecha específica
+        const validSchedules = getValidScheduleForDate(s, dateStr);
         
-        // Compatibilidad con formato antiguo
-        return s.regularDay === day && s.regularTime === time;
+        return validSchedules.some(schedule => 
+            schedule.day === day && schedule.time === time
+        );
     });
     
     if (student) {
-        // ✅ ENCONTRAR O CREAR CLASE REGULAR PARA ESTE HORARIO ESPECÍFICO
-        let regularClass = regularClasses.find(rc => 
-            rc.studentId === student.id && 
-            rc.day === day && 
-            rc.time === time
-        );
+        // ✅ BUSCAR clase regular vigente para esta fecha
+        let regularClass = getValidRegularClassForDate(student, day, time, dateStr);
         
         if (!regularClass) {
-            // Determinar scheduleIndex basado en el horario encontrado
-            let scheduleIndex = 0;
-            if (student.schedules && student.schedules.length > 0) {
-                const matchingSchedule = student.schedules.findIndex(s => 
-                    s.day === day && s.time === time
-                );
-                scheduleIndex = matchingSchedule >= 0 ? matchingSchedule : 0;
-            }
+            // Solo verificar si debería haber una clase según el horario del estudiante para esta fecha
+            const validSchedules = getValidScheduleForDate(student, dateStr);
+            const matchingSchedule = validSchedules.find(s => 
+                s.day === day && s.time === time
+            );
             
-            regularClass = {
-                id: Date.now() + Math.random(),
-                studentId: student.id,
-                day: day,
-                time: time,
-                scheduleIndex: scheduleIndex
-            };
-            regularClasses.push(regularClass);
-            saveData();
+            if (matchingSchedule) {
+                // En lugar de crear, usar un objeto temporal que no se guarde en el array global
+                regularClass = {
+                    id: 'temp_' + Date.now() + Math.random(),
+                    studentId: student.id,
+                    day: day,
+                    time: time,
+                    scheduleIndex: validSchedules.findIndex(s => s.day === day && s.time === time),
+                    isTemporary: true
+                };
+            }
         }
         
-        return { 
-            ...regularClass,
-            studentName: student.name
-        };
+        if (regularClass) {
+            return { 
+                ...regularClass,
+                studentName: student.name
+            };
+        }
     }
     
     return null;
+}
+
+// ✅ NUEVA: Obtener información de cambios de horario para mostrar en detalles
+function getScheduleChangeInfo(studentId, targetDate) {
+    const student = students.find(s => s.id === studentId);
+    if (!student || !student.scheduleHistory) return null;
+    
+    const dateStr = typeof targetDate === 'string' ? targetDate : getLocalDateString(targetDate);
+    
+    // Buscar si esta fecha está cerca de un cambio de horario
+    for (const historyEntry of student.scheduleHistory) {
+        const changeDate = historyEntry.effectiveUntil;
+        const nextDay = getNextDay(changeDate);
+        
+        if (dateStr === changeDate) {
+            return {
+                type: 'lastDay',
+                message: `Último día con horario anterior`,
+                newSchedule: getValidScheduleForDate(student, nextDay)
+            };
+        } else if (dateStr === nextDay) {
+            return {
+                type: 'firstDay',
+                message: `Primer día con horario nuevo`,
+                oldSchedule: historyEntry.schedules
+            };
+        }
+    }
+    
+    return null;
+}
+
+// ✅ NUEVA: Obtener día siguiente usando fechas locales  
+function getNextDay(dateStr) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = createLocalDate(year, month, day);
+    date.setDate(date.getDate() + 1);
+    return getLocalDateString(date);
 }
 
 function findSpecialClass(date, time) {
@@ -766,6 +799,8 @@ function showClassDetails(classData, type) {
         const attendanceRecord = attendance.find(a => a.classId === classData.id && a.date === dateStr);
         const currentStatus = attendanceRecord?.status || null;
         
+        const scheduleChangeInfo = getScheduleChangeInfo(classData.studentId, dateStr);
+
         const conflicts = findAllConflictsAt(classDate, classData.time);
         const conflictingRecoveries = conflicts.recoveries.filter(r => r.studentId !== classData.studentId);
         
@@ -785,6 +820,18 @@ function showClassDetails(classData, type) {
                     <strong>📋 Sin marcar</strong>
                 </div>
             `}
+
+            ${scheduleChangeInfo ? `
+                <div class="schedule-change-info ${scheduleChangeInfo.type}">
+                    <strong>🔄 ${scheduleChangeInfo.message}</strong>
+                    ${scheduleChangeInfo.oldSchedule ? `
+                        <br><small>Horario anterior: ${scheduleChangeInfo.oldSchedule.map(s => `${getDayName(s.day)} ${s.time}`).join(', ')}</small>
+                    ` : ''}
+                    ${scheduleChangeInfo.newSchedule ? `
+                        <br><small>Horario nuevo: ${scheduleChangeInfo.newSchedule.map(s => `${getDayName(s.day)} ${s.time}`).join(', ')}</small>
+                    ` : ''}
+                </div>
+            ` : ''}
             
             ${conflictingRecoveries.length > 0 ? `
                 <div class="context-info conflict">
@@ -812,6 +859,13 @@ function showClassDetails(classData, type) {
                         ${currentStatus === 'license' ? 'style="opacity: 1; font-weight: 600;"' : ''}>
                     ${currentStatus === 'license' ? '✓ ' : ''}Licencia
                 </button>
+                ${currentStatus ? `
+                    <button class="btn btn-secondary" 
+                            onclick="unmarkAttendance(${classData.id}, '${dateStr}')"
+                            style="margin-top: 0.5rem; width: 100%;">
+                        🗑️ Desmarcar
+                    </button>
+                ` : ''}
             </div>
             
             ${currentStatus === 'license' ? `
@@ -865,19 +919,26 @@ function showClassDetails(classData, type) {
                     }).join('')}
                 </div>
             ` : ''}
-            
-            <div class="attendance-buttons">
-                <button class="btn ${currentStatus === 'present' ? 'btn-present active-status' : 'btn-present'}" 
-                        onclick="markRecoveryAttendance(${classData.id}, 'present', '${classData.date}')"
-                        ${currentStatus === 'present' ? 'style="opacity: 1; font-weight: 600;"' : ''}>
-                    ${currentStatus === 'present' ? '✓ ' : ''}Presente
-                </button>
-                <button class="btn ${currentStatus === 'absent' ? 'btn-absent active-status' : 'btn-absent'}" 
-                        onclick="markRecoveryAttendance(${classData.id}, 'absent', '${classData.date}')"
-                        ${currentStatus === 'absent' ? 'style="opacity: 1; font-weight: 600;"' : ''}>
-                    ${currentStatus === 'absent' ? '✓ ' : ''}Ausente
-                </button>
-            </div>
+
+                <div class="attendance-buttons">
+                    <button class="btn ${currentStatus === 'present' ? 'btn-present active-status' : 'btn-present'}" 
+                            onclick="markRecoveryAttendance(${classData.id}, 'present', '${classData.date}')"
+                            ${currentStatus === 'present' ? 'style="opacity: 1; font-weight: 600;"' : ''}>
+                        ${currentStatus === 'present' ? '✓ ' : ''}Presente
+                    </button>
+                    <button class="btn ${currentStatus === 'absent' ? 'btn-absent active-status' : 'btn-absent'}" 
+                            onclick="markRecoveryAttendance(${classData.id}, 'absent', '${classData.date}')"
+                            ${currentStatus === 'absent' ? 'style="opacity: 1; font-weight: 600;"' : ''}>
+                        ${currentStatus === 'absent' ? '✓ ' : ''}Ausente
+                    </button>
+                    ${currentStatus ? `
+                        <button class="btn btn-secondary" 
+                                onclick="unmarkRecoveryAttendance(${classData.id}, '${classData.date}')"
+                                style="margin-top: 0.5rem; width: 100%;">
+                            🗑️ Desmarcar
+                        </button>
+                    ` : ''}
+                </div>
         `;
         
         modalFooter.innerHTML = `
@@ -975,6 +1036,69 @@ function scheduleRecoveryFromLicense(date, time) {
         // Abrir modal de agendar recuperación
         openRecoveryModal(dateObj, time, studentsWithCredits);
     }, 200);
+}
+
+// ✅ NUEVA: Obtener horario vigente de estudiante en fecha específica
+function getValidScheduleForDate(student, targetDate) {
+    const dateStr = typeof targetDate === 'string' ? targetDate : getLocalDateString(targetDate);
+    
+    // Si no hay historial de cambios, usar horario actual
+    if (!student.scheduleHistory || student.scheduleHistory.length === 0) {
+        return getStudentSchedules(student);
+    }
+    
+    // Buscar en historial de horarios usando fechas locales
+    for (const historyEntry of student.scheduleHistory) {
+        const fromDate = historyEntry.effectiveFrom;
+        const untilDate = historyEntry.effectiveUntil;
+        
+        // Verificar si la fecha está en este período del historial
+        if (dateStr >= fromDate && dateStr <= untilDate) {
+            return historyEntry.schedules;
+        }
+    }
+    
+    // Si la fecha es después del último cambio, usar horario actual
+    if (student.scheduleChangeDate && dateStr >= student.scheduleChangeDate) {
+        return student.schedules;
+    }
+    
+    // Como fallback para fechas muy anteriores, buscar el primer período del historial
+    if (student.scheduleHistory.length > 0) {
+        const firstHistoryEntry = student.scheduleHistory[0];
+        return firstHistoryEntry.schedules;
+    }
+    
+    return student.schedules;
+}
+
+// ✅ NUEVA: Obtener clase regular vigente considerando historial
+function getValidRegularClassForDate(student, day, time, targetDate) {
+    const dateStr = typeof targetDate === 'string' ? targetDate : getLocalDateString(targetDate);
+    
+    // ✅ BUSCAR clase regular específica que esté vigente en esta fecha
+    const validClasses = regularClasses.filter(rc => {
+        if (rc.studentId !== student.id || rc.day !== day || rc.time !== time) {
+            return false;
+        }
+        
+        // Verificar rango de validez de la clase
+        const validFrom = rc.validFrom || '2024-01-01'; // Default muy anterior
+        const validUntil = rc.validUntil || '2099-12-31'; // Default muy futuro
+        
+        return dateStr >= validFrom && dateStr <= validUntil;
+    });
+    
+    // Retornar la clase más específica (la que tiene validFrom más reciente)
+    if (validClasses.length > 0) {
+        return validClasses.sort((a, b) => {
+            const aFrom = a.validFrom || '2024-01-01';
+            const bFrom = b.validFrom || '2024-01-01';
+            return bFrom.localeCompare(aFrom); // Más reciente primero
+        })[0];
+    }
+    
+    return null;
 }
 
 // Función auxiliar para obtener color según estado
@@ -1105,4 +1229,105 @@ function getSystemDayFromLicenseDate(dateStr, time) {
     
     const dayOfWeek = date.getDay(); // 0=Dom, 1=Lun, etc.
     return dayOfWeek === 0 ? null : dayOfWeek; // No manejamos domingo
+}
+
+function unmarkAttendance(classId, date) {
+    const classData = regularClasses.find(c => c.id === classId);
+    
+    if (!classData) {
+        showToast('Error: Clase no encontrada');
+        return;
+    }
+    
+    // Buscar registro de asistencia actual
+    const currentRecord = attendance.find(a => a.classId === classId && a.date === date);
+    
+    if (!currentRecord) {
+        showToast('No hay asistencia marcada para desmarcar');
+        return;
+    }
+    
+    const previousStatus = currentRecord.status;
+    
+    // Obtener el estudiante para manejar créditos
+    const student = students.find(s => s.id === classData.studentId);
+    if (!student) {
+        showToast('Error: Estudiante no encontrado');
+        return;
+    }
+    
+    // Confirmar acción
+    if (!confirm(`¿Desmarcar asistencia de ${student.name}?\n\nEstado actual: ${getStatusText(previousStatus)}\nEsto eliminará completamente el registro.`)) {
+        return;
+    }
+    
+    // LÓGICA DE CRÉDITOS al desmarcar
+    let creditChange = 0;
+    let changeDescription = 'Asistencia desmarcada';
+    
+    if (previousStatus === 'license') {
+        // Si era licencia, restar crédito
+        creditChange = -1;
+        changeDescription = 'Licencia desmarcada (-1 crédito)';
+        
+        // Validar que no queden créditos negativos
+        const newCredits = (student.licenseCredits || 0) + creditChange;
+        if (newCredits < 0) {
+            showToast('❌ No se puede desmarcar: el estudiante quedaría con créditos negativos');
+            return;
+        }
+    }
+    
+    // Aplicar cambios
+    // 1. Actualizar créditos del estudiante
+    student.licenseCredits = (student.licenseCredits || 0) + creditChange;
+    
+    // 2. Eliminar registro de asistencia
+    attendance = attendance.filter(a => !(a.classId === classId && a.date === date));
+    
+    // 3. Si era licencia, eliminar entrada especial
+    if (previousStatus === 'license') {
+        removeSpecialLicense(classId, date);
+    }
+    
+    // Guardar y actualizar
+    saveData();
+    renderWeekView();
+    closeModal();
+    
+    // Mostrar feedback
+    const creditsText = student.licenseCredits > 0 ? ` (${student.licenseCredits} créditos disponibles)` : '';
+    showToast(`✅ ${changeDescription}${creditsText}`);
+}
+
+function unmarkRecoveryAttendance(classId, date) {
+    // Buscar registro de asistencia actual para recuperación
+    const currentRecord = attendance.find(a => a.classId === classId && a.date === date);
+    
+    if (!currentRecord) {
+        showToast('No hay asistencia marcada para desmarcar');
+        return;
+    }
+    
+    const recovery = specialClasses.find(sc => sc.id === classId);
+    const student = students.find(s => s.id === recovery?.studentId);
+    
+    if (!recovery || !student) {
+        showToast('Error: Recuperación o estudiante no encontrado');
+        return;
+    }
+    
+    // Confirmar acción
+    if (!confirm(`¿Desmarcar asistencia de recuperación?\n\nEstudiante: ${student.name}\nEstado actual: ${getStatusText(currentRecord.status)}`)) {
+        return;
+    }
+    
+    // Eliminar registro de asistencia de recuperación
+    attendance = attendance.filter(a => !(a.classId === classId && a.date === date));
+    
+    saveData();
+    renderWeekView();
+    closeModal();
+    
+    showToast(`✅ Asistencia de recuperación desmarcada para ${student.name}`);
 }

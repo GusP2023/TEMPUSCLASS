@@ -321,6 +321,46 @@
         </div>
     </div>
 
+    <!-- Modal Cambio de Horario -->
+    <div class="modal" id="scheduleChangeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">📅 Cambio de Horario Detectado</h2>
+            </div>
+            <div id="scheduleChangeBody">
+                <p><strong>Se detectaron cambios en el horario de <span id="changeStudentName"></span></strong></p>
+                
+                <div class="schedule-comparison" id="scheduleComparison">
+                    <!-- Se llena dinámicamente -->
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">¿Desde qué fecha aplica el nuevo horario?</label>
+                    <input type="date" class="form-input" id="scheduleChangeDate" required>
+                    <small style="color: var(--text-light); font-size: 0.8rem;">
+                        Las asistencias anteriores a esta fecha se mantienen con el horario anterior
+                    </small>
+                </div>
+                
+                <div class="context-info warning">
+                    <strong>ℹ️ Importante:</strong>
+                    <p>• Las asistencias ya marcadas se conservan</p>
+                    <p>• El nuevo horario aplica desde la fecha seleccionada</p>
+                    <p>• Las clases futuras usarán el nuevo horario</p>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="cancelScheduleChange()">
+                    ❌ Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" onclick="confirmScheduleChange()">
+                    ✅ Aplicar Cambio
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Deactivate Student -->
     <div class="modal" id="deactivateModal">
         <div class="modal-content">

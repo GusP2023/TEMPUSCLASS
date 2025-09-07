@@ -598,6 +598,101 @@
     opacity: 0.7;
 }
 
+/* ✅ CSS para Modal de Cambio de Horario */
+.schedule-comparison {
+    background: var(--bg-main);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.schedule-comparison h4 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.schedule-comparison .schedule-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 6px;
+    margin-bottom: 0.25rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.schedule-comparison .old-schedule {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #dc2626;
+}
+
+.schedule-comparison .new-schedule {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    color: #047857;
+}
+
+/* Información de cambio de horario en detalles de clase */
+.schedule-change-info {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin: 0.75rem 0;
+    font-size: 0.875rem;
+}
+
+.schedule-change-info.first-day {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(4, 120, 87, 0.1) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    color: #047857;
+}
+
+.schedule-change-info.last-day {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    color: #92400e;
+}
+
+/* ✅ CSS para botón de desmarcar asistencia */
+.attendance-buttons .btn-secondary {
+    background: var(--text-light);
+    color: var(--white);
+    border: 2px dashed rgba(100, 116, 139, 0.3);
+    opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+.attendance-buttons .btn-secondary:hover {
+    background: #475569;
+    opacity: 1;
+    border-style: solid;
+    transform: translateY(-1px);
+}
+
+/* Indicador visual de que la clase se puede desmarcar */
+.attendance-buttons .btn-secondary::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--error);
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
 /* Hover mejorado para botones inactivos */
 .attendance-buttons .btn:not(.active-status):hover {
     opacity: 0.9;
@@ -631,6 +726,19 @@
     
     .btn-credits {
         text-align: center;
+    }
+
+    .schedule-comparison {
+        padding: 0.75rem;
+    }
+    
+    .schedule-comparison > div {
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+    }
+    
+    .schedule-comparison h4 {
+        font-size: 0.85rem;
     }
 }
 
