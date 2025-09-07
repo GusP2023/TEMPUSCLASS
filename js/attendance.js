@@ -1,4 +1,5 @@
 function markAttendance(classId, status) {
+    // ✅ USAR FECHA LOCAL SIN TIMEZONE ISSUES
     const today = getLocalDateString();
     const classData = regularClasses.find(c => c.id === classId);
     
@@ -162,9 +163,12 @@ function markAttendanceWithDate(classId, status, date) {
 function markAsLicenseWithDate(classId, date) {
     const regularClass = regularClasses.find(c => c.id === classId);
     if (regularClass) {
+        // ✅ ASEGURAR QUE LA FECHA ESTÉ EN FORMATO CORRECTO
+        const dateStr = typeof date === 'string' ? date : getLocalDateString(date);
+        
         // Verificar si ya existe la entrada especial
         const existingLicense = specialClasses.find(sc => 
-            sc.originalClassId === classId && sc.date === date && sc.type === 'license'
+            sc.originalClassId === classId && sc.date === dateStr && sc.type === 'license'
         );
         
         if (!existingLicense) {
@@ -172,7 +176,7 @@ function markAsLicenseWithDate(classId, date) {
             specialClasses.push({
                 id: Date.now() + Math.random(),
                 studentId: regularClass.studentId,
-                date: date,
+                date: dateStr,
                 time: regularClass.time,
                 type: 'license',
                 originalClassId: classId
@@ -185,10 +189,33 @@ function markAsLicenseWithDate(classId, date) {
 function removeSpecialLicense(classId, date) {
     const regularClass = regularClasses.find(c => c.id === classId);
     if (regularClass) {
+        // ✅ ASEGURAR QUE LA FECHA ESTÉ EN FORMATO CORRECTO
+        const dateStr = typeof date === 'string' ? date : getLocalDateString(date);
+        
         // Remover entrada de licencia especial del día específico
         specialClasses = specialClasses.filter(sc => {
-            return !(sc.originalClassId === classId && sc.date === date && sc.type === 'license');
+            return !(sc.originalClassId === classId && sc.date === dateStr && sc.type === 'license');
         });
+    }
+}
+
+// ✅ NUEVA FUNCIÓN: Validar y normalizar fechas antes de usar
+function normalizeDate(date) {
+    if (typeof date === 'string') {
+        // Si ya es string, verificar formato
+        if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            return date;
+        } else {
+            // Si no es formato correcto, intentar parsear
+            const parsedDate = parseLocalDate(date);
+            return getLocalDateString(parsedDate);
+        }
+    } else if (date instanceof Date) {
+        // Si es Date, convertir a string local
+        return getLocalDateString(date);
+    } else {
+        // Si es otra cosa, usar fecha actual
+        return getLocalDateString();
     }
 }
 
@@ -225,17 +252,15 @@ function markRecoveryAttendance(classId, status, date) {
     showToast(`✅ Recuperación: ${changeText}`);
 }
 
-// Función mejorada markAsLicense que maneja la lógica sin duplicar créditos
+// ✅ CORREGIR markAsLicense - usar fecha local consistente
 function markAsLicense(classId) {
     const regularClass = regularClasses.find(c => c.id === classId);
     if (!regularClass) return;
 
-    // Crear entrada de licencia SOLO si no existe ya
-    const today = new Date();
+    // ✅ USAR FECHA LOCAL CONSISTENTE
     const weekStart = getStartOfWeek(currentWeek);
-    const classDate = new Date(weekStart);
-    classDate.setDate(classDate.getDate() + ((regularClass.day + 6) % 7));
-    const dateStr = classDate.toISOString().split('T')[0];
+    const classDate = getClassDateInWeek(regularClass.day, weekStart);
+    const dateStr = getLocalDateString(classDate);
 
     // Verificar si ya existe una licencia especial para esta fecha
     const existingLicense = specialClasses.find(sc => 
@@ -409,15 +434,23 @@ function refreshCalendarVisualStates() {
 }
 
 function hasAttendance(classData) {
-    const today = getLocalDateString();
-    return attendance.some(a => a.classId === classData.id && a.date === today);
+    if (classData.day) {
+        // Para clases regulares, calcular fecha correcta
+        const weekStart = getStartOfWeek(currentWeek);
+        const classDate = getClassDateInWeek(classData.day, weekStart);
+        const dateStr = getLocalDateString(classDate);
+        return attendance.some(a => a.classId === classData.id && a.date === dateStr);
+    } else {
+        // Para clases especiales, usar su fecha
+        return attendance.some(a => a.classId === classData.id && a.date === classData.date);
+    }
 }
 
 function getAttendanceStatus(classData, weekDate) {
     if (classData.day) { // Clase regular
-        const classDate = new Date(weekDate);
-        classDate.setDate(classDate.getDate() + ((classData.day + 6) % 7));
-        const dateStr = classDate.toISOString().split('T')[0];
+        // ✅ USAR FUNCIÓN LOCAL SIN TIMEZONE ISSUES
+        const classDate = getClassDateInWeek(classData.day, weekDate);
+        const dateStr = getLocalDateString(classDate);
         const attendanceRecord = attendance.find(a => a.classId === classData.id && a.date === dateStr);
         return attendanceRecord?.status || null;
     } else { // Clase especial

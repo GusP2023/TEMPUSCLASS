@@ -302,15 +302,15 @@ function renderScheduleGrid(startOfWeek) {
 
         // Slots para días L-S
         for (let i = 0; i < 6; i++) {
-            const date = new Date(startOfWeek);
-            date.setDate(date.getDate() + i);
+            // ✅ USAR FUNCIÓN LOCAL PARA CREAR FECHA SIN TIMEZONE ISSUES
+            const classDate = getClassDateInWeek(i + 1, startOfWeek);
             const dayNum = i + 1;
             
             const slot = document.createElement('div');
             slot.className = 'slot';
             
             // PRIORIDAD 1: Recuperaciones (tienen prioridad sobre todo)
-            const specialClasses = findSpecialClass(date, time);
+            const specialClasses = findSpecialClass(classDate, time);
             const recovery = specialClasses?.type === 'recovery' ? specialClasses : null;
             const license = specialClasses?.type === 'license' ? specialClasses : null;
             
@@ -334,9 +334,8 @@ function renderScheduleGrid(startOfWeek) {
                     slot.classList.add('empty');
                     slot.textContent = time;
                     slot.onclick = () => {
-                        const slotDate = new Date(startOfWeek);
-                        slotDate.setDate(slotDate.getDate() + i);
-                        handleSlotClick(slotDate, time, dayNum);
+                        // ✅ PASAR FECHA CORRECTA SIN TIMEZONE ISSUES
+                        handleSlotClick(classDate, time, dayNum);
                     };
                 }
             }
@@ -465,7 +464,10 @@ function renderClass(slot, classData, type) {
     } else {
         block.classList.add('regular');
         
-        const attendanceStatus = getAttendanceStatus(classData, getStartOfWeek(currentWeek));
+        // ✅ CORREGIR: Usar fecha correcta para obtener estado de asistencia
+        const weekStart = getStartOfWeek(currentWeek);
+        const attendanceStatus = getAttendanceStatus(classData, weekStart);
+        
         if (attendanceStatus) {
             block.classList.add(`attendance-${attendanceStatus}`);
         }
@@ -488,11 +490,11 @@ function renderClass(slot, classData, type) {
         };
         block.style.cursor = 'pointer';
     }
-    // 🔧 CAMBIO PRINCIPAL: Click para licencias - mostrar detalles primero
+    // Click para licencias - mostrar detalles primero
     else if (type === 'special' && classData.type === 'license') {
         block.onclick = (e) => {
             e.stopPropagation();
-            showClassDetails(classData, type); // ✅ Mostrar detalles primero
+            showClassDetails(classData, type);
         };
         
         block.style.cursor = 'pointer';
@@ -646,7 +648,8 @@ function openRecoveryModal(date, time, eligibleStudents) {
     const select = document.getElementById('recoveryStudent');
     const dateTimeInput = document.getElementById('recoveryDateTime');
 
-    const dateStr = date.toISOString().split('T')[0];
+    // ✅ USAR FUNCIÓN LOCAL PARA EVITAR TIMEZONE ISSUES
+    const dateStr = getLocalDateString(date);
     dateTimeInput.value = `${formatDate(date)} - ${time}`;
     dateTimeInput.dataset.date = dateStr;
     dateTimeInput.dataset.time = time;
@@ -656,8 +659,8 @@ function openRecoveryModal(date, time, eligibleStudents) {
     const existingInfo = modalContent.querySelector('.conflict-info');
     if (existingInfo) existingInfo.remove();
 
-    // Verificar conflictos
-    const conflicts = findAllConflictsAt(date, time);
+    // Verificar conflictos usando fecha correcta
+    const conflicts = findAllConflictsAt(dateStr, time);
 
     // Si hay recuperaciones, mostrar opción de eliminar
     if (conflicts.recoveries.length > 0) {
@@ -757,9 +760,8 @@ function showClassDetails(classData, type) {
 
     if (type === 'regular') {
         const weekStart = getStartOfWeek(currentWeek);
-        const classDate = new Date(weekStart);
-        classDate.setDate(classDate.getDate() + ((classData.day + 6) % 7));
-        const dateStr = classDate.toISOString().split('T')[0];
+        const classDate = getClassDateInWeek(classData.day, weekStart);
+        const dateStr = getLocalDateString(classDate);
         
         const attendanceRecord = attendance.find(a => a.classId === classData.id && a.date === dateStr);
         const currentStatus = attendanceRecord?.status || null;
@@ -1051,16 +1053,19 @@ function revertLicenseToStatus(licenseId, newStatus, date) {
         return;
     }
     
+    // ✅ NORMALIZAR FECHA PARA EVITAR PROBLEMAS
+    const normalizedDate = normalizeDate(date);
+    
     // ✅ BUSCAR CLASE REGULAR ESPECÍFICA PARA ESTE HORARIO
     let regularClass = regularClasses.find(rc => 
         rc.studentId === license.studentId &&
         rc.time === license.time &&
-        rc.day === getSystemDayFromLicenseDate(date, license.time)
+        rc.day === getSystemDayFromLicenseDate(normalizedDate, license.time)
     );
     
     // Si no existe, crear clase regular para este horario específico
     if (!regularClass) {
-        const targetDay = getSystemDayFromLicenseDate(date, license.time);
+        const targetDay = getSystemDayFromLicenseDate(normalizedDate, license.time);
         
         // Verificar que el estudiante tenga este horario en sus schedules
         const studentSchedules = getStudentSchedules(student);
@@ -1088,15 +1093,15 @@ function revertLicenseToStatus(licenseId, newStatus, date) {
     }
     
     // Usar la función existente para marcar asistencia
-    markAttendanceWithDate(regularClass.id, newStatus, date);
+    markAttendanceWithDate(regularClass.id, newStatus, normalizedDate);
 }
 
 // ✅ FUNCIÓN CORREGIDA sin problemas de timezone
 function getSystemDayFromLicenseDate(dateStr, time) {
-    // Parsear fecha manualmente para evitar problemas de timezone
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    date.setHours(0, 0, 0, 0); // Asegurar hora local
+    // ✅ PARSEAR FECHA MANUALMENTE PARA EVITAR PROBLEMAS DE TIMEZONE
+    const normalizedDate = normalizeDate(dateStr);
+    const [year, month, day] = normalizedDate.split('-').map(Number);
+    const date = createLocalDate(year, month, day);
     
     const dayOfWeek = date.getDay(); // 0=Dom, 1=Lun, etc.
     return dayOfWeek === 0 ? null : dayOfWeek; // No manejamos domingo

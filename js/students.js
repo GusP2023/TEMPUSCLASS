@@ -319,7 +319,8 @@ function createNewStudent(name, instrument, schedules, startDate = null) {
     
     students.push(newStudent);
     
-    // ✅ GENERAR LICENCIAS AUTOMÁTICAS PARA CADA HORARIO
+    // ✅ MANTENER: Generar licencias automáticas para estudiantes individuales
+    // Solo cuando se crea UN estudiante desde la sección "Alumnos"
     schedules.forEach((schedule, index) => {
         generateAutoLicensesForSchedule(newStudent, schedule, index);
     });

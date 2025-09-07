@@ -272,11 +272,14 @@ function createAllStudents(studentsData) {
             regularClasses.push(newRegularClass);
         });
         
-        // Generar licencias automáticas si tiene fecha de inicio
-        if (studentData.startDate) {
-            studentData.schedules.forEach((schedule, index) => {
-                generateAutoLicensesForSchedule(newStudent, schedule, index);
-            });
-        }
+        // ❌ REMOVIDO: No generar licencias automáticas para múltiples estudiantes
+        // Este sistema es para migrar datos existentes, no nuevos estudiantes
+        
+        // ✅ OPCIONAL: Solo generar si específicamente se indica que es migración de datos antiguos
+        // if (studentData.generateAutoLicenses && studentData.startDate) {
+        //     studentData.schedules.forEach((schedule, index) => {
+        //         generateAutoLicensesForSchedule(newStudent, schedule, index);
+        //     });
+        // }
     });
 }

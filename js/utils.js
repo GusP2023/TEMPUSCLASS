@@ -11,6 +11,11 @@ function getLocalDateString(date = null) {
     return `${year}-${month}-${day}`;
 }
 
+// ✅ NUEVA: Función para crear fecha específica sin timezone issues
+function createLocalDate(year, month, day) {
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
+}
+
 // ✅ FUNCIÓN PARA PARSEAR FECHAS SIN TIMEZONE ISSUES
 function parseLocalDate(dateString) {
     const [year, month, day] = dateString.split('-').map(Number);
@@ -26,24 +31,19 @@ function isStudentActiveOnDate(student, targetDate) {
     
     // Verificar fecha de inicio
     if (student.startDate) {
-        const [year, month, day] = student.startDate.split('-').map(Number);
-        const startDate = new Date(year, month - 1, day);
-        startDate.setHours(0, 0, 0, 0);
+        const startDate = parseLocalDate(student.startDate);
         
-        // Si la clase es ANTES de la fecha de inicio, NO está activo
+        // Si la clase es ANTES de la fecha de inicio, NO estÃ¡ activo
         if (checkDate < startDate) {
             return false;
         }
     }
     
-    // Verificar si está activo globalmente
+    // Verificar si estÃ¡ activo globalmente
     if (!student.active) {
-        // Verificar fecha de desactivación
+        // Verificar fecha de desactivaciÃ³n
         if (student.deactivatedAt) {
-            const [year, month, day] = student.deactivatedAt.split('-').map(Number);
-            const deactivationDate = new Date(year, month - 1, day);
-            deactivationDate.setHours(0, 0, 0, 0);
-            
+            const deactivationDate = parseLocalDate(student.deactivatedAt);
             return checkDate < deactivationDate;
         }
         return false;
@@ -84,11 +84,11 @@ function showSwipeHints() {
     }
 }
 
-// Función helper para obtener fecha de una clase en semana específica
-function getClassDateInWeek(day, weekStartDate) {
+// ✅ NUEVA: Función para calcular fecha de clase en semana específica
+function getClassDateInWeek(dayOfWeek, weekStartDate) {
     const classDate = new Date(weekStartDate);
-    classDate.setDate(classDate.getDate() + (day - 1));
-    classDate.setHours(0, 0, 0, 0); // Agregar esta línea
+    classDate.setDate(classDate.getDate() + (dayOfWeek - 1));
+    classDate.setHours(0, 0, 0, 0);
     return classDate;
 }
 

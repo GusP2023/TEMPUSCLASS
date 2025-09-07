@@ -411,11 +411,14 @@ async function processImportData(validRows) {
             regularClasses.push(newRegularClass);
         });
         
-        // Generar licencias automáticas si tiene fecha de inicio
-        if (row.FechaInicio) {
-            row.schedules.forEach((schedule, index) => {
-                generateAutoLicensesForSchedule(newStudent, schedule, index);
-            });
-        }
+        // ❌ REMOVIDO: No generar licencias automáticas para importación CSV
+        // La importación CSV es para migrar datos existentes del sistema anterior
+        
+        // ✅ OPCIONAL: Solo si el CSV específicamente incluye una columna "GenerarLicenciasAuto"
+        // if (row.FechaInicio && row.GenerarLicenciasAuto === 'Si') {
+        //     row.schedules.forEach((schedule, index) => {
+        //         generateAutoLicensesForSchedule(newStudent, schedule, index);
+        //     });
+        // }
     }
 }
