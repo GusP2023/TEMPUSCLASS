@@ -1,12 +1,11 @@
 function initCalendar() {
+
+    // Debugging removido
     renderWeekView();
     // Cualquier otra inicialización específica del calendario
     setupCalendarNavigation();
 
-    // Agregar clase inicial de carga
-    setTimeout(() => {
-        document.getElementById('scheduleGrid')?.classList.add('initial-load');
-    }, 100);
+    // Animación inicial eliminada
 }
 
 function setupCalendarNavigation() {
@@ -103,10 +102,10 @@ function navigateWeek(direction, animationType = 'default') {
     // Renderizar con transición
     renderWeekViewWithTransition(direction, animationType);
     
-    // Reset navegación después de animación
+    // Reset navegación después de animación con timing mejorado
     setTimeout(() => {
         isNavigating = false;
-    }, 400);
+    }, 300); // Reducido de 400ms a 300ms
 }
 
 function showNavigationFeedback(direction, animationType) {
@@ -259,16 +258,21 @@ function renderWeekViewWithTransition(direction, animationType) {
     scheduleGrid.classList.add('transitioning', `transition-${animationType}`);
     header.classList.add('header-transitioning');
     
-    // Actualizar contenido
+    // Actualizar contenido con timing mejorado
     setTimeout(() => {
         renderWeekView();
         
-        // Remover clases de transición
+        // Remover clases de transición con timing más suave
         setTimeout(() => {
             scheduleGrid.classList.remove('transitioning', `transition-${animationType}`);
             header.classList.remove('header-transitioning');
-        }, 50);
-    }, 150);
+        }, 100); // Aumentado de 50ms a 100ms
+    }, 120); // Reducido de 150ms a 120ms para más fluidez
+}
+
+function toggleMorningView() {
+    hideMorning = !hideMorning;
+    renderScheduleGrid(getStartOfWeek(currentWeek));
 }
 
 function renderScheduleGrid(startOfWeek) {

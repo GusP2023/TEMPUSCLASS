@@ -3,7 +3,9 @@
     height: 100%;
     overflow-y: auto;
     overflow-x: auto;
-    padding-bottom: 20px;
+    padding-bottom: 60px; /* Más espacio para scroll */
+    min-height: calc(100vh - 250px); /* Fallback */
+    min-height: calc(100dvh - 250px); /* Garantizar altura suficiente */
     touch-action: pan-y; /* Permitir scroll vertical, controlar horizontal */
 }
 
@@ -42,8 +44,9 @@
 }
 
 .schedule-grid.transitioning {
-    opacity: 0.7;
+    opacity: 0.8; /* Menos transparencia para mejor visibilidad */
     transform: translateX(0);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); /* Easing suave y más rápido */
 }
 
 .schedule-grid:has(.saturday-hidden) {
@@ -51,19 +54,23 @@
 }
 
 .schedule-grid.transition-swipe-left {
-    transform: translateX(-20px);
+    transform: translateX(-15px); /* Movimiento más sutil */
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .schedule-grid.transition-swipe-right {
-    transform: translateX(20px);
+    transform: translateX(15px); /* Movimiento más sutil */
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .schedule-grid.transition-button-prev {
-    transform: translateX(10px);
+    transform: translateX(8px); /* Movimiento más sutil */
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .schedule-grid.transition-button-next {
-    transform: translateX(-10px);
+    transform: translateX(-8px); /* Movimiento más sutil */
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Efectos de feedback táctil */
@@ -72,10 +79,7 @@
     opacity: 0.9;
 }
 
-/* Animación de carga inicial */
-.schedule-grid.initial-load {
-    animation: slideInFromBottom 0.6s ease-out;
-}
+/* Animación inicial eliminada */
 
 .time-slot {
     background: var(--white);
@@ -167,31 +171,39 @@
 
 /* Separador de turnos */
 .time-separator {
-    background: var(--bg-secondary);
-    padding: 0.25rem;
-    font-size: 0.6rem;
-    color: var(--text-light);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    padding: 0.35rem;
+    font-size: 0.7rem;
+    color: var(--white);
     text-align: center;
-    font-weight: 600;
-    letter-spacing: 0.5px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 20px;
+    min-height: 24px;
     grid-column: 1 / -1;
-    margin: 1px 0;
-    border-radius: 4px;
+    margin: 2px 0;
+    border-radius: 6px;
     cursor: pointer;
-    transition: background 0.3s;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(30, 58, 138, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .time-separator:hover {
-    background: var(--border);
+    background: linear-gradient(135deg, var(--accent) 0%, #d97706 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
 }
+
+/* Sin animaciones complejas */
 
 .morning-hidden {
     display: none !important;
 }
+
+/* Keyframes eliminados */
 
 .saturday-hidden {
     display: none !important;
@@ -323,6 +335,11 @@
         width: 20px !important;
         height: 20px !important;
     }
+    
+    .schedule-container {
+        padding-bottom: 80px; /* Más espacio en pantallas muy pequeñas */
+        min-height: calc(100dvh - 280px);
+    }
 }
 
 /* Modo oscuro - ajustes para navegación */
@@ -346,16 +363,7 @@
     50% { opacity: 0.6; }
 }
 
-@keyframes slideInFromBottom {
-    0% {
-        transform: translateY(20px);
-        opacity: 0;
-    }
-    100% {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
+/* Keyframe slideInFromBottom eliminado */
 
 @keyframes statusChange {
     0% { 

@@ -24,7 +24,8 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg-main);
     color: var(--text);
-    height: 100vh;
+    height: 100vh; /* Fallback para navegadores antiguos */
+    height: 100dvh; /* Dynamic viewport height para móviles */
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -34,7 +35,7 @@ body {
 .header {
     background: var(--primary);
     color: var(--white);
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 0rem;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     transition: all 0.3s ease;
 }
@@ -52,7 +53,8 @@ body {
 }
 
 .header.header-transitioning {
-    opacity: 0.9;
+    opacity: 0.95; /* Menos transparencia para mejor visibilidad */
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1); /* Transición suave */
 }
 
 .week-nav {
@@ -88,21 +90,15 @@ body {
 }
 
 .week-days {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 2px;
+    display: flex;
+    justify-content: space-around; /* reparte con espacio entre los días */
     margin-top: 0.5rem;
     width: 100%;
 }
-
 .week-day-header {
     text-align: center;
-    font-size: 0.7rem;
-    padding: 0.2rem 0.1rem;
-    background: rgba(255,255,255,0.1);
-    border-radius: 4px;
-    min-width: 0;
-    overflow: hidden;
+    font-size: 0.86rem;
+    min-width: 61px; /* tamaño mínimo para que no se achiquen demasiado */
 }
 
 .week-day-header.today {
@@ -115,7 +111,9 @@ body {
     flex: 1;
     overflow: hidden;
     position: relative;
-    padding-bottom: 140px;
+    min-height: calc(100vh - 200px); /* Fallback */
+    min-height: calc(100dvh - 200px); /* Dynamic height - header + nav */
+    padding-bottom: 40px;
 }
 
 /* Resetear cualquier interferencia con bottom-nav */

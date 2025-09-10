@@ -228,10 +228,30 @@ function isToday(date) {
             date.getFullYear() === today.getFullYear();
 }
 
-function toggleMorningView() {
-    hideMorning = !hideMorning;
-    renderScheduleGrid(getStartOfWeek(currentWeek));
-}
+// function toggleMorningView() {
+//     const scheduleGrid = document.getElementById('scheduleGrid');
+    
+//     if (!hideMorning) {
+//         // Ocultar mañana
+//         scheduleGrid.classList.add('hiding-morning');
+        
+//         setTimeout(() => {
+//             scheduleGrid.classList.remove('hiding-morning');
+//             hideMorning = true;
+//             renderScheduleGrid(getStartOfWeek(currentWeek));
+//         }, 400);
+        
+//     } else {
+//         // Mostrar mañana - NO cambiar hideMorning hasta el final
+//         scheduleGrid.classList.add('showing-morning');
+        
+//         setTimeout(() => {
+//             hideMorning = false;  // ← Cambiar DESPUÉS de la animación
+//             renderScheduleGrid(getStartOfWeek(currentWeek));
+//             scheduleGrid.classList.remove('showing-morning');
+//         }, 400);
+//     }
+// }
 
 function deleteRecovery(recoveryId) {
     const recovery = specialClasses.find(c => c.id === recoveryId);
