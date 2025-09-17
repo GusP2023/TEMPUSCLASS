@@ -151,6 +151,83 @@
     color: var(--white);
 }
 
+/* ✅ Hover mejorado para recuperaciones */
+.class-block.recovery:hover {
+    transform: translateY(-1px);
+    transition: all 0.3s ease;
+}
+
+.class-block.recovery.recovery-present:hover {
+    box-shadow: 0 2px 12px rgba(16, 185, 129, 0.4);
+}
+
+.class-block.recovery.recovery-absent:hover {
+    box-shadow: 0 2px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* ✅ Responsivo para móviles pequeños */
+@media (max-width: 360px) {
+    .class-block.recovery .class-type {
+        font-size: 0.5rem;
+        gap: 0.1rem;
+    }
+    
+    .class-block.recovery.recovery-present .class-type::before,
+    .class-block.recovery.recovery-absent .class-type::before {
+        font-size: 0.6rem;
+    }
+}
+
+/* Recuperación PRESENTE (gradiente verde → púrpura) */
+.class-block.recovery.recovery-present {
+    background: linear-gradient(180deg, #10b981 0%,  var(--recovery) 60%);
+    color: var(--white);
+    border: 2px solid rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+    animation: recoveryPresent 0.6s ease-out;
+}
+
+/* Recuperación AUSENTE (gradiente rojo → púrpura) */
+.class-block.recovery.recovery-absent {
+    background: linear-gradient(180deg, #ef4444 0%, var(--recovery) 60%);
+    color: var(--white);
+    border: 2px solid rgba(239, 68, 68, 0.6);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+    animation: recoveryAbsent 0.6s ease-out;
+}
+
+/* ✅ Texto específico para recuperaciones con estado */
+.class-block.recovery .class-type {
+    font-size: 0.55rem;
+    opacity: 0.95;
+    margin-top: 2px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+}
+
+/* ✅ Íconos para estados de recuperación */
+.class-block.recovery.recovery-present .class-type::before {
+    content: "✓";
+    font-size: 0.7rem;
+    font-weight: 900;
+}
+
+.class-block.recovery.recovery-absent .class-type::before {
+    content: "✗";
+    font-size: 0.7rem;
+    font-weight: 900;
+}
+
+.class-block.recovery:not(.recovery-present):not(.recovery-absent) .class-type::before {
+    content: "📋";
+    font-size: 0.6rem;
+}
+
 .class-block.license {
     background: linear-gradient(135deg, var(--license) 0%, #0891b2 100%);
     color: var(--white);
@@ -325,16 +402,6 @@
         height: 18px !important;
     }
     
-    .fab {
-        width: 50px;
-        height: 50px;
-        bottom: 85px;
-    }
-    
-    .fab svg {
-        width: 20px !important;
-        height: 20px !important;
-    }
     
     .schedule-container {
         padding-bottom: 80px; /* Más espacio en pantallas muy pequeñas */
@@ -399,5 +466,36 @@
     50% { 
         opacity: 0.6;
         transform: translateY(-50%) translateX(5px);
+    }
+}
+
+/* ✅ Animaciones para cambios de estado */
+@keyframes recoveryPresent {
+    0% { 
+        transform: scale(1); 
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+    }
+    50% { 
+        transform: scale(1.05); 
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.2);
+    }
+    100% { 
+        transform: scale(1); 
+        box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+    }
+}
+
+@keyframes recoveryAbsent {
+    0% { 
+        transform: scale(1); 
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    50% { 
+        transform: scale(1.05); 
+        box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.2);
+    }
+    100% { 
+        transform: scale(1); 
+        box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
     }
 }

@@ -2,54 +2,244 @@
 let pendingStudentUpdate = null;
 
 function initStudents() {
-    // Event listeners específicos de estudiantes
-    document.getElementById('instrumentFilter').addEventListener('change', renderStudentsList);
-    document.getElementById('statusFilter').addEventListener('change', renderStudentsList);
-    
+    // Event listeners específicos de estudiantes - verificar que existen
+    const instrumentFilter = document.getElementById('instrumentFilter');
+    const statusFilter = document.getElementById('statusFilter');
+
+    if (instrumentFilter) {
+        instrumentFilter.addEventListener('change', renderStudentsList);
+    }
+    if (statusFilter) {
+        statusFilter.addEventListener('change', renderStudentsList);
+    }
+
     // Cualquier otra inicialización específica de estudiantes
     populateTimeSlots();
 }
 
-// Actualizar switchTab
-function switchTab(tab) {
+function switchTab(tab, event) {
+    // Actualizar navegación activa
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
     });
-    event.currentTarget.classList.add('active');
     
-    // ✅ CORREGIDO: Ocultar TODAS las secciones primero
-    document.querySelector('.main-content').style.display = 'none';
-    document.getElementById('studentsSection').style.display = 'none';
+    // Encontrar el nav-item correcto
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        const onclick = item.getAttribute('onclick');
+        if (onclick && onclick.includes(`'${tab}'`)) {
+            item.classList.add('active');
+        }
+    });
     
-    // Ocultar sección de configuración si existe
+    // Ocultar todas las secciones
+    const mainContent = document.querySelector('.main-content');
+    const studentsSection = document.getElementById('studentsSection');
+    const financeSection = document.getElementById('financeSection');
     const settingsSection = document.getElementById('settingsSection');
-    if (settingsSection) {
-        settingsSection.style.display = 'none';
+
+    if (mainContent) mainContent.style.display = 'none';
+    if (studentsSection) studentsSection.style.display = 'none';
+    if (financeSection) financeSection.style.display = 'none';
+    if (settingsSection) settingsSection.style.display = 'none';
+    
+    // Ocultar headers específicos
+    const calendarHeader = document.getElementById('calendarHeader');
+    const studentsHeader = document.getElementById('studentsHeader');
+    
+    if (calendarHeader) calendarHeader.style.display = 'none';
+    if (studentsHeader) studentsHeader.style.display = 'none';
+    
+    // Obtener elemento header y actualizar clase
+    const header = document.querySelector('.header');
+    if (header) {
+        header.classList.remove('header-calendar', 'header-students', 'header-finance', 'header-settings');
     }
     
-    // ✅ CORREGIDO: Mostrar solo la sección seleccionada
-    if (tab === 'calendar') {
-        document.querySelector('.main-content').style.display = 'block';
-        updateFabAction();
-    } else if (tab === 'students') {
-        document.getElementById('studentsSection').style.display = 'block';
-        renderStudentsList();
-        populateTimeSlots();
-        updateFabAction();
-    } else if (tab === 'settings') {
-        showSettingsSection();
-    } else if (tab === 'finance') {
-        showToast('Sección Finanzas en desarrollo');
-    } else {
-        showToast(`Sección ${tab} en desarrollo`);
+    // Mostrar sección y header correspondiente
+    switch(tab) {
+        case 'calendar':
+            if (mainContent) mainContent.style.display = 'block';
+            if (header) header.classList.add('header-calendar');
+            if (calendarHeader) calendarHeader.style.display = 'block';
+            break;
+            
+        case 'students':
+            if (studentsSection) studentsSection.style.display = 'block';
+            if (header) header.classList.add('header-students');
+            if (studentsHeader) studentsHeader.style.display = 'block';
+
+            // ✅ NUEVO: Configurar header colapsable
+            setTimeout(() => {
+                setupStudentsScrollHeader();
+            }, 100);
+            
+            // Configurar funcionalidades específicas de estudiantes
+            updateStudentsStats();
+            setupStudentsHeaderFilters();
+            renderStudentsList();
+            break;
+            
+        case 'finance':
+            if (header) header.classList.add('header-finance');
+            showBasicFinanceSection();
+            break;
+            
+        case 'settings':
+            if (header) header.classList.add('header-settings');
+            showSettingsSection();
+            break;
+    }
+}
+
+// ✅ Header progresivo SIN saltos - técnica mejorada
+function setupStudentsScrollHeader() {
+    const studentsSection = document.getElementById('studentsSection');
+    const studentsHeader = document.getElementById('studentsHeader');
+    
+    if (!studentsSection || !studentsHeader) {
+        return;
+    }
+    
+    // ✅ Medir altura real de las estadísticas para animación suave
+    const statsElement = studentsHeader.querySelector('.students-stats-tabs');
+    let statsHeight = 0;
+    
+    if (statsElement) {
+        statsHeight = statsElement.offsetHeight;
+        console.log('📏 Altura de stats:', statsHeight);
+    }
+    
+    const maxScrollDistance = 100; // Más distancia para transición más suave
+    
+    function handleStudentsScroll() {
+        const scrollTop = studentsSection.scrollTop;
+        
+        // ✅ Calcular porcentaje (0 = visible, 1 = oculto)
+        const hideProgress = Math.min(scrollTop / maxScrollDistance, 1);
+        
+        if (scrollTop === 0) {
+            // ✅ Resetear al estado original
+            studentsHeader.style.transform = 'translateY(0)';
+            studentsHeader.style.padding = '1rem';
+            
+            if (statsElement) {
+                statsElement.style.opacity = '1';
+                statsElement.style.marginBottom = '1rem';
+                statsElement.style.transform = 'scaleX(1) scaleY(1) translateY(0)'; // ✅ Resetear correctamente
+            }
+            
+            const titleElement = studentsHeader.querySelector('.header-students-top h1');
+            if (titleElement) {
+                titleElement.style.fontSize = '1.5rem';
+            }
+            
+            const creditsBtn = studentsHeader.querySelector('.btn-credits-mobile');
+            if (creditsBtn) {
+                creditsBtn.style.height = '48px';
+                creditsBtn.style.fontSize = '0.9rem';
+            }
+        } else {
+            // ✅ OCULTAR HEADER COMPLETO (no solo mover hacia arriba)
+            const headerHeight = studentsHeader.offsetHeight;
+            const hideAmount = hideProgress * (headerHeight * 0.1); // Ocultar 40% del header
+            
+            // Usar margin-top negativo en lugar de transform para ocultar mejor
+            studentsHeader.style.marginTop = `-${hideAmount}px`;
+            
+            // ✅ Reducir padding suavemente
+            const minPadding = 0.4;
+            const maxPadding = 1;
+            const currentPadding = maxPadding - (hideProgress * (maxPadding - minPadding));
+            studentsHeader.style.padding = `${currentPadding}rem`;
+            // ✅ NUEVO: Reducir margin-bottom del título cuando se oculta
+            const headerTop = studentsHeader.querySelector('.header-students-top');
+            if (headerTop) {
+                const minMargin = 0;
+                const maxMargin = 1;
+                const currentMargin = maxMargin - (hideProgress * (maxMargin - minMargin));
+                headerTop.style.marginBottom = `${currentMargin}rem`;
+            }
+            
+            // ✅ Ocultar estadísticas SIN saltos usando maxHeight y scale
+            if (statsElement) {
+                const statsProgress = Math.min(hideProgress * 1.5, 1);
+                
+                // Opacidad suave
+                const statsOpacity = Math.max(0, 1 - statsProgress);
+                
+                // ✅ NUEVO: Usar scaleY en lugar de maxHeight para evitar corte
+                const currentScaleY = Math.max(0.1, 1 - statsProgress);
+                const currentScaleX = Math.max(0.9, 1 - (statsProgress * 0.1));
+                
+                // Margin suave
+                const currentMargin = Math.max(0, 1 * (1 - statsProgress));
+                
+                // ✅ NUEVO: Mover hacia arriba mientras se contrae
+                const translateY = -(statsProgress * 10);
+                
+                statsElement.style.opacity = statsOpacity;
+                statsElement.style.marginBottom = `${currentMargin}rem`;
+                
+                // ✅ CAMBIO PRINCIPAL: scaleY en lugar de maxHeight
+                statsElement.style.transform = `scaleX(${currentScaleX}) scaleY(${currentScaleY}) translateY(${translateY}px)`;
+            }
+            
+            // ✅ Título más pequeño gradualmente
+            const titleElement = studentsHeader.querySelector('.header-students-top h1');
+            if (titleElement) {
+                const minSize = 1.2;
+                const maxSize = 1.5;
+                const currentSize = maxSize - (hideProgress * (maxSize - minSize));
+                titleElement.style.fontSize = `${currentSize}rem`;
+            }
+            
+            // ✅ Botón más pequeño gradualmente
+            const creditsBtn = studentsHeader.querySelector('.btn-credits-mobile');
+            if (creditsBtn) {
+                const minHeight = 38;
+                const maxHeight = 48;
+                const currentHeight = maxHeight - (hideProgress * (maxHeight - minHeight));
+                
+                const minFontSize = 0.75;
+                const maxFontSize = 0.9;
+                const currentFontSize = maxFontSize - (hideProgress * (maxFontSize - minFontSize));
+                
+                creditsBtn.style.height = `${currentHeight}px`;
+                creditsBtn.style.fontSize = `${currentFontSize}rem`;
+            }
+        }
+    }
+    
+    studentsSection.addEventListener('scroll', handleStudentsScroll, { 
+        passive: true 
+    });
+    
+    console.log('📱 Header progresivo SIN saltos configurado');
+}
+
+function scrollToTop() {
+    const studentsSection = document.getElementById('studentsSection');
+    if (studentsSection) {
+        studentsSection.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
     }
 }
 
 // Renderizar lista
 function renderStudentsList() {
     const container = document.getElementById('studentsList');
-    const instrumentFilter = document.getElementById('instrumentFilter').value;
-    const statusFilter = document.getElementById('statusFilter').value;
+    
+    // 👥 MEJORADO: Obtener valores de filtro de ambas ubicaciones (header y sección)
+    const instrumentFilterSection = document.getElementById('instrumentFilter');
+    const statusFilterSection = document.getElementById('statusFilter');
+    const instrumentFilterHeader = document.getElementById('headerInstrumentFilter');
+    const statusFilterHeader = document.getElementById('headerStatusFilter');
+    
+    const instrumentFilter = (instrumentFilterSection?.value) || (instrumentFilterHeader?.value) || '';
+    const statusFilter = (statusFilterSection?.value) || (statusFilterHeader?.value) || '';
     
     let filteredStudents = students.filter(student => {
         const instrumentMatch = !instrumentFilter || student.instrument === instrumentFilter;
@@ -57,10 +247,10 @@ function renderStudentsList() {
             (statusFilter === 'active' && student.active) ||
             (statusFilter === 'inactive' && !student.active);
         return instrumentMatch && statusMatch;
-    }).sort((a, b) => a.name.localeCompare(b.name));
+    }).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
     container.innerHTML = filteredStudents.map(student => {
-        // ✅ MOSTRAR MÚLTIPLES HORARIOS
+        // Código existente del mapeo...
         let scheduleText = '';
         
         if (student.schedules && student.schedules.length > 0) {
@@ -94,6 +284,9 @@ function renderStudentsList() {
             </div>
         `;
     }).join('');
+    
+    // 👥 NUEVO: Actualizar estadísticas después del renderizado
+    updateStudentsStats();
 }
 
 // Detalles del alumno
@@ -323,15 +516,12 @@ function createNewStudent(name, instrument, schedules, startDate = null) {
     students.push(newStudent);
     
     // ✅ MANTENER: Generar licencias automáticas para estudiantes individuales
-    // Solo cuando se crea UN estudiante desde la sección "Alumnos"
-    schedules.forEach((schedule, index) => {
-        generateAutoLicensesForSchedule(newStudent, schedule, index);
-    });
     
     saveData();
     renderStudentsList();
     renderWeekView();
     closeModal();
+    updateStudentsStats();
     
     const scheduleText = schedules.map(s => `${getDayName(s.day)} ${s.time}`).join(' y ');
     const startMessage = startDate ? ` (inicia el ${startDate})` : '';
@@ -960,6 +1150,7 @@ function deactivateStudent(studentId, fromDate) {
     renderStudentsList();
     renderWeekView();
     closeModal();
+    updateStudentsStats(); // 👥 AGREGAR esta línea
     showToast('Alumno desactivado y clases futuras canceladas');
 }
 
@@ -970,6 +1161,7 @@ function reactivateStudent(studentId) {
     saveData();
     renderStudentsList();
     closeModal();
+    updateStudentsStats(); 
     showToast('Alumno reactivado');
 }
 
@@ -1056,19 +1248,6 @@ function getMonthlyAttendance(studentId) {
     };
 }
 
-// Actualizar FAB
-function updateFabAction() {
-    const fab = document.querySelector('.fab');
-    const studentsVisible = document.getElementById('studentsSection').style.display !== 'none';
-    
-    if (studentsVisible) {
-        fab.innerHTML = '<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14m7-7H5"/></svg>';
-        fab.onclick = () => openStudentForm();
-    } else {
-        fab.innerHTML = '<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 11l3 3L22 4"/></svg>';
-        fab.onclick = openAttendanceMode;
-    }
-}
 
 // ✅ FUNCIONES PARA MÚLTIPLES HORARIOS
 
@@ -1269,6 +1448,7 @@ function removeCreditsFromStudent() {
     saveData();
     renderStudentsList();
     closeModal();
+    updateStudentsStats(); // 👥 AGREGAR esta línea
     
     showToast(`✅ ${amount} crédito${amount > 1 ? 's' : ''} removido${amount > 1 ? 's' : ''} de ${student.name}. Total: ${student.licenseCredits}`);
 }
@@ -1314,7 +1494,7 @@ function addCreditsToStudent() {
     saveData();
     renderStudentsList();
     closeModal();
-    
+    updateStudentsStats(); // 👥 AGREGAR esta línea
     showToast(`✅ ${amount} crédito${amount > 1 ? 's' : ''} agregado${amount > 1 ? 's' : ''} a ${student.name}. Total: ${student.licenseCredits}`);
 }
 
@@ -1618,29 +1798,7 @@ function showSettingsSection() {
                     </div>
                 </div>
                 
-                <div class="student-card">
-                    <div class="student-header">
-                        <div class="student-name">👥 Estudiantes</div>
-                    </div>
-                    <div style="margin-top: 0.5rem; color: var(--text-light); font-size: 0.9rem;">
-                        <p>• Total: <strong>${students.length}</strong></p>
-                        <p>• Activos: <strong>${students.filter(s => s.active).length}</strong></p>
-                        <p>• Créditos totales: <strong>${students.reduce((sum, s) => sum + (s.licenseCredits || 0), 0)}</strong></p>
-                    </div>
-                </div>
-                
-                <div class="student-card">
-                    <div class="student-header">
-                        <div class="student-name">📅 Clases</div>
-                    </div>
-                    <div style="margin-top: 0.5rem; color: var(--text-light); font-size: 0.9rem;">
-                        <p>• Regulares: <strong>${regularClasses.filter(rc => !rc.validUntil).length}</strong></p>
-                        <p>• Recuperaciones: <strong>${specialClasses.filter(s => s.type === 'recovery').length}</strong></p>
-                        <p>• Licencias: <strong>${specialClasses.filter(s => s.type === 'license').length}</strong></p>
-                    </div>
-                </div>
-                
-                <div class="student-card" style="border: 1px solid var(--error); background: rgba(239, 68, 68, 0.05);">
+                <div class="student-card" style="border: 1px solid var(--error); background: rgba(239, 68, 68, 0.05);margin-top: 0.5rem;">
                     <div class="student-header">
                         <div class="student-name" style="color: var(--error);">⚠️ Zona Peligrosa</div>
                     </div>
@@ -1660,7 +1818,6 @@ function showSettingsSection() {
     // ✅ CORREGIDO: Solo actualizar estadísticas y mostrar la sección
     updateSettingsStats();
     settingsSection.style.display = 'block';
-    updateFabAction();
 }   
 
 function updateSettingsStats() {
@@ -1705,4 +1862,222 @@ function confirmResetApp() {
     } else {
         showToast('❌ Cancelado - Los datos no fueron borrados');
     }
+}
+
+// ✅ TEMPORAL: Función básica para Finanzas
+function showBasicFinanceSection() {
+    // ✅ CORREGIDO: NO ocultar otras secciones aquí, switchTab() ya lo hace
+
+    // Crear sección de finanzas si no existe
+    let financeSection = document.getElementById('financeSection');
+    if (!financeSection) {
+        financeSection = document.createElement('div');
+        financeSection.id = 'financeSection';
+        financeSection.className = 'students-section';
+        financeSection.innerHTML = `
+            <div class="students-header">
+                <h2>💰 Finanzas</h2>
+            </div>
+            <div style="padding: 2rem; text-align: center; color: var(--text-light);">
+                <p>🚧 Sección en desarrollo</p>
+                <p>Pronto podrás gestionar:</p>
+                <ul style="text-align: left; max-width: 300px; margin: 1rem auto;">
+                    <li>• Pagos por mes</li>
+                    <li>• Ingresos totales</li>
+                    <li>• Reportes financieros</li>
+                    <li>• Estados de cuenta</li>
+                </ul>
+            </div>
+        `;
+        document.body.appendChild(financeSection);
+    }
+    
+    financeSection.style.display = 'block';
+}
+
+
+// ✅ updateStudentsStats NUEVA para el header móvil
+function updateStudentsStats() {
+    const totalStudents = students.length;
+    const activeStudents = students.filter(s => s.active !== false).length;
+    const totalCredits = students.reduce((sum, s) => sum + (s.licenseCredits || 0), 0);
+    
+    // Actualizar contador de activos
+    const activeElement = document.getElementById('activeStudentsCount');
+    if (activeElement) {
+        activeElement.textContent = activeStudents;
+    }
+    
+    // Actualizar contador de créditos
+    const creditsElement = document.getElementById('totalCreditsCount');
+    if (creditsElement) {
+        creditsElement.textContent = totalCredits;
+    }
+    
+    console.log(`📊 Stats updated: ${activeStudents} activos, ${totalCredits} créditos`);
+}
+
+// ✅ setupStudentsHeaderFilters NUEVA para el filtro combinado
+function setupStudentsHeaderFilters() {
+    const mainFilter = document.getElementById('studentsMainFilter');
+    
+    if (mainFilter) {
+        // Remover listeners anteriores
+        mainFilter.removeEventListener('change', handleMainFilterChange);
+        mainFilter.addEventListener('change', handleMainFilterChange);
+    }
+    
+    // Configurar clicks en tabs de estadísticas
+    const activeTab = document.getElementById('activeStudentsTab');
+    const creditsTab = document.getElementById('creditsTab');
+    
+    if (activeTab) {
+        activeTab.addEventListener('click', () => {
+            setActiveTab('active');
+            filterStudentsByActiveStatus();
+        });
+    }
+    
+    if (creditsTab) {
+        creditsTab.addEventListener('click', () => {
+            setActiveTab('credits');
+            filterStudentsByCredits();
+        });
+    }
+}
+
+// ✅ NUEVA: Manejar cambio en filtro principal
+// ✅ ACTUALIZAR filtros para incluir scroll al top
+function handleMainFilterChange() {
+    const mainFilter = document.getElementById('studentsMainFilter');
+    const filterValue = mainFilter.value;
+    
+    // Resetear tabs activos
+    resetActiveTabs();
+    
+    // Scroll al top al cambiar filtro
+    scrollToTop();
+    
+    // Aplicar filtro (código existente)
+    switch(filterValue) {
+        case 'inactive':
+            filterStudentsByInactiveStatus();
+            break;
+        case 'guitar':
+        case 'piano':
+        case 'violin':
+        case 'bass':
+        case 'drums':
+            filterStudentsByInstrument(filterValue);
+            break;
+        default:
+            renderStudentsList();
+    }
+}
+
+// ✅ NUEVA: Filtrar estudiantes por estado activo
+function filterStudentsByActiveStatus() {
+    const activeStudents = students.filter(s => s.active !== false);
+    renderFilteredStudents(activeStudents);
+}
+
+// ✅ NUEVA: Filtrar estudiantes inactivos
+function filterStudentsByInactiveStatus() {
+    const inactiveStudents = students.filter(s => s.active === false);
+    renderFilteredStudents(inactiveStudents);
+}
+
+// ✅ NUEVA: Filtrar estudiantes con créditos
+function filterStudentsByCredits() {
+    const studentsWithCredits = students.filter(s => (s.licenseCredits || 0) > 0);
+    renderFilteredStudents(studentsWithCredits);
+}
+
+// ✅ NUEVA: Filtrar por instrumento
+function filterStudentsByInstrument(instrument) {
+    const instrumentStudents = students.filter(s => 
+        s.instrument && s.instrument.toLowerCase() === instrument.toLowerCase()
+    );
+    renderFilteredStudents(instrumentStudents);
+}
+
+// ✅ NUEVA: Renderizar lista filtrada
+function renderFilteredStudents(filteredStudents) {
+    const container = document.getElementById('studentsList');
+    if (!container) return;
+    
+    if (filteredStudents.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: var(--text-light);">
+                <p>No se encontraron estudiantes con este filtro</p>
+            </div>
+        `;
+        return;
+    }
+
+    // ✅ FIX: Ordenamiento case-insensitive aquí también
+    const sortedStudents = filteredStudents.sort((a, b) => 
+        a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+    );
+    
+    // Usar la misma lógica de renderStudentsList pero con estudiantes filtrados
+    container.innerHTML = filteredStudents.map(student => {
+        let scheduleText = '';
+        
+        if (student.schedules && student.schedules.length > 0) {
+            scheduleText = student.schedules
+                .map(s => `${getDayName(s.day)} ${s.time}`)
+                .join(' • ');
+        } else {
+            scheduleText = student.regularDay ? 
+                `${getDayName(student.regularDay)} ${student.regularTime}` : 
+                'Sin horario';
+        }
+        
+        if (student.startDate) {
+            scheduleText += ` (desde ${student.startDate})`;
+        }
+            
+        return `
+            <div class="student-card ${student.active ? '' : 'inactive'}" onclick="showStudentDetails(${student.id})">
+                <div class="student-header">
+                    <div class="student-name">${student.name}</div>
+                    <div class="student-status ${student.active ? 'active' : 'inactive'}">
+                        ${student.active ? 'Activo' : 'Inactivo'}
+                    </div>
+                </div>
+                <div class="student-info">
+                    <div><strong>Instrumento:</strong> ${student.instrument}</div>
+                    <div><strong>Horario${student.schedules?.length > 1 ? 's' : ''}:</strong> ${scheduleText}</div>
+                </div>
+                ${student.licenseCredits > 0 ? `<div class="student-credits">💳 ${student.licenseCredits} créditos disponibles</div>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+// ✅ NUEVA: Establecer tab activo
+function setActiveTab(tabType) {
+    const activeTab = document.getElementById('activeStudentsTab');
+    const creditsTab = document.getElementById('creditsTab');
+    
+    if (activeTab && creditsTab) {
+        activeTab.classList.remove('active');
+        creditsTab.classList.remove('active');
+        
+        if (tabType === 'active') {
+            activeTab.classList.add('active');
+        } else if (tabType === 'credits') {
+            creditsTab.classList.add('active');
+        }
+    }
+}
+
+// ✅ NUEVA: Resetear tabs activos
+function resetActiveTabs() {
+    const activeTab = document.getElementById('activeStudentsTab');
+    const creditsTab = document.getElementById('creditsTab');
+    
+    if (activeTab) activeTab.classList.remove('active');
+    if (creditsTab) creditsTab.classList.remove('active');
 }

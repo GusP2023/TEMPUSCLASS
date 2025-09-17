@@ -249,7 +249,13 @@ function markRecoveryAttendance(classId, status, date) {
     const changeText = previousStatus ? 
         `Cambiado de ${getStatusText(previousStatus)} a ${getStatusText(status)}` :
         `Marcado como ${getStatusText(status)}`;
-    showToast(`✅ Recuperación: ${changeText}`);
+    
+    // ✅ MEJORADO: Toast con emoji según estado
+    let emoji = '✅';
+    if (status === 'present') emoji = '✅';
+    else if (status === 'absent') emoji = '❌';
+    
+    showToast(`${emoji} Recuperación: ${changeText}`);
 }
 
 // ✅ CORREGIR markAsLicense - usar fecha local consistente
@@ -463,10 +469,8 @@ function openAttendanceMode() {
     attendanceMode = !attendanceMode;
     if (attendanceMode) {
         showToast('Modo asistencia activado. Toca las clases para marcar asistencia.');
-        document.querySelector('.fab').style.background = 'var(--success)';
     } else {
         showToast('Modo asistencia desactivado');
-        document.querySelector('.fab').style.background = 'linear-gradient(135deg, var(--accent) 0%, #d97706 100%)';
     }
     renderWeekView();
 }

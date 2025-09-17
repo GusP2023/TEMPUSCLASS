@@ -218,8 +218,9 @@
     padding: 1rem;
     height: 100%;
     overflow-y: auto;
-    padding-bottom: 160px; /* ✅ Espacio para bottom-nav (73px) + FAB (90px) */
+    padding-bottom: 120px; /* ✅ AUMENTADO de 73px a 120px para el header más grande */
     box-sizing: border-box; /* ✅ Incluir padding en el cálculo de altura */
+    scroll-behavior: smooth;
 }
 
 .students-header {
@@ -249,6 +250,7 @@
 .students-list {
     display: grid;
     gap: 1rem;
+    padding-bottom: 1rem;
 }
 
 .student-card {
@@ -262,6 +264,11 @@
 
 .student-card:hover {
     transform: translateY(-2px);
+}
+
+/* ✅ MEJORA: Última tarjeta con más espacio */
+.student-card:last-child {
+    margin-bottom: 1rem;
 }
 
 .student-card.inactive {
@@ -322,6 +329,17 @@
     align-items: center;
     gap: 1rem;
     flex-wrap: wrap;
+}
+
+/* ✅ FIX: Mejor espaciado para pantallas pequeñas */
+@media (max-width: 360px) {
+    .students-section {
+        padding-bottom: 140px; /* ✅ Aún más espacio en pantallas muy pequeñas */
+    }
+    
+    .header-students-content.minimized {
+        padding: 0.4rem 0.8rem;
+    }
 }
 
 .btn-credits {
@@ -525,23 +543,6 @@
     margin: 1rem 0;
 }
 
-.stat-box {
-    text-align: center;
-    padding: 0.75rem;
-    border-radius: 8px;
-    background: var(--bg-main);
-}
-
-.stat-number {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--primary);
-}
-
-.stat-label {
-    font-size: 0.75rem;
-    color: var(--text-light);
-}
 
 /* Lista de Recuperaciones */
 .recoveries-list {

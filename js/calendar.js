@@ -1,11 +1,23 @@
 function initCalendar() {
 
-    // Debugging removido
-    renderWeekView();
-    // Cualquier otra inicialización específica del calendario
-    setupCalendarNavigation();
+    // 🔧 CORREGIDO: Asegurar que inicie con header de calendario
+    const header = document.querySelector('.header');
+    header.classList.add('header-calendar');
+    
+    // 🔧 NUEVO: Mostrar header específico de calendario al iniciar
+    const calendarHeader = document.getElementById('calendarHeader');
+    const studentsHeader = document.getElementById('studentsHeader');
+    
+    if (calendarHeader) calendarHeader.style.display = 'block';
+    if (studentsHeader) studentsHeader.style.display = 'none';
+    
+    // Configurar navegación primero
+    if (typeof setupCalendarNavigation === 'function') {
+        setupCalendarNavigation();
+    }
 
-    // Animación inicial eliminada
+    // Luego renderizar
+    renderWeekView();
 }
 
 function setupCalendarNavigation() {
@@ -218,7 +230,7 @@ function updateWeekIndicators() {
         
         // Remover botón si existe
         const backButton = document.querySelector('.back-to-current');
-        if (backButton) {
+        if (backButton) {   
             backButton.remove();
         }
     }
@@ -498,28 +510,57 @@ function renderClass(slot, classData, type) {
 
     if (type === 'special') {
         block.classList.add(classData.type);
+        
+        // ✅ NUEVO: Detectar estado de asistencia para recuperaciones
+        if (classData.type === 'recovery') {
+            const attendanceRecord = attendance.find(a => 
+                a.classId === classData.id && a.date === classData.date
+            );
+            
+            let recoveryText = 'Recup.';
+            
+            if (attendanceRecord) {
+                if (attendanceRecord.status === 'present') {
+                    block.classList.add('recovery-present');
+                    recoveryText = 'Recup.';
+                } else if (attendanceRecord.status === 'absent') {
+                    block.classList.add('recovery-absent');
+                    recoveryText = 'Recup.';
+                }
+            }
+            
+            block.innerHTML = `
+                <div class="class-name">${classData.studentName}</div>
+                <div class="class-type">${recoveryText}</div>
+            `;
+        } else {
+            // Para licencias (sin cambios)
+            block.innerHTML = `
+                <div class="class-name">${classData.studentName}</div>
+                <div class="class-type">Licencia</div>
+            `;
+        }
     } else {
+        // Para clases regulares (sin cambios)
         block.classList.add('regular');
         
-        // ✅ CORREGIR: Usar fecha correcta para obtener estado de asistencia
         const weekStart = getStartOfWeek(currentWeek);
         const attendanceStatus = getAttendanceStatus(classData, weekStart);
         
         if (attendanceStatus) {
             block.classList.add(`attendance-${attendanceStatus}`);
         }
+        
+        block.innerHTML = `
+            <div class="class-name">${classData.studentName}</div>
+        `;
     }
 
     if (attendanceMode && !hasAttendance(classData)) {
         block.classList.add('attendance-pending');
     }
 
-    block.innerHTML = `
-        <div class="class-name">${classData.studentName}</div>
-        ${type === 'special' ? `<div class="class-type">${classData.type === 'recovery' ? 'Recuperación' : 'Licencia'}</div>` : ''}
-    `;
-
-    // Click para recuperaciones - mostrar detalles y asistencia
+    // Click handlers (sin cambios)
     if (type === 'special' && classData.type === 'recovery') {
         block.onclick = (e) => {
             e.stopPropagation();
@@ -527,7 +568,6 @@ function renderClass(slot, classData, type) {
         };
         block.style.cursor = 'pointer';
     }
-    // Click para licencias - mostrar detalles primero
     else if (type === 'special' && classData.type === 'license') {
         block.onclick = (e) => {
             e.stopPropagation();
@@ -537,7 +577,6 @@ function renderClass(slot, classData, type) {
         block.style.cursor = 'pointer';
         block.title = 'Click para ver detalles de la licencia';
     } 
-    // Click para clases regulares
     else {
         block.onclick = (e) => {
             e.stopPropagation();
@@ -546,6 +585,15 @@ function renderClass(slot, classData, type) {
     }
 
     slot.appendChild(block);
+}
+
+// ✅ NUEVA: Función para refrescar estados de recuperación después de marcar asistencia
+function refreshRecoveryStates() {
+    // Buscar todos los bloques de recuperación y actualizar sus estados
+    document.querySelectorAll('.class-block.recovery').forEach(block => {
+        // Buscar el classData asociado y renderizar de nuevo
+        // Esta función se llamará desde markRecoveryAttendance
+    });
 }
 
 function handleSlotClick(date, time, day) {

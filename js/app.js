@@ -52,6 +52,16 @@ document.addEventListener('DOMContentLoaded', () => {
     initCalendar();   // Función que estará en calendar.js
     initStudents();   // Función que estará en students.js
     setupEventListeners(); // Event listeners generales (modales, etc.)
+
+    if (typeof initDynamicHeaders === 'function') {
+        initDynamicHeaders();
+    }
+
+    // Inicializar header por defecto
+    const header = document.querySelector('.header');
+    if (header && !header.classList.contains('header-calendar')) {
+        header.classList.add('header-calendar');
+    }
 });
 
 function initApp() {
@@ -227,31 +237,6 @@ function isToday(date) {
             date.getMonth() === today.getMonth() &&
             date.getFullYear() === today.getFullYear();
 }
-
-// function toggleMorningView() {
-//     const scheduleGrid = document.getElementById('scheduleGrid');
-    
-//     if (!hideMorning) {
-//         // Ocultar mañana
-//         scheduleGrid.classList.add('hiding-morning');
-        
-//         setTimeout(() => {
-//             scheduleGrid.classList.remove('hiding-morning');
-//             hideMorning = true;
-//             renderScheduleGrid(getStartOfWeek(currentWeek));
-//         }, 400);
-        
-//     } else {
-//         // Mostrar mañana - NO cambiar hideMorning hasta el final
-//         scheduleGrid.classList.add('showing-morning');
-        
-//         setTimeout(() => {
-//             hideMorning = false;  // ← Cambiar DESPUÉS de la animación
-//             renderScheduleGrid(getStartOfWeek(currentWeek));
-//             scheduleGrid.classList.remove('showing-morning');
-//         }, 400);
-//     }
-// }
 
 function deleteRecovery(recoveryId) {
     const recovery = specialClasses.find(c => c.id === recoveryId);
@@ -431,14 +416,11 @@ async function processImportData(validRows) {
             regularClasses.push(newRegularClass);
         });
         
-        // ❌ REMOVIDO: No generar licencias automáticas para importación CSV
-        // La importación CSV es para migrar datos existentes del sistema anterior
-        
-        // ✅ OPCIONAL: Solo si el CSV específicamente incluye una columna "GenerarLicenciasAuto"
-        // if (row.FechaInicio && row.GenerarLicenciasAuto === 'Si') {
-        //     row.schedules.forEach((schedule, index) => {
-        //         generateAutoLicensesForSchedule(newStudent, schedule, index);
-        //     });
-        // }
     }
+}
+
+function initDynamicHeaders() {
+    // Esta función se llama pero puede estar vacía por ahora
+    // Las configuraciones de headers están en setupStudentsHeaderFilters()
+    console.log('Headers dinámicos inicializados');
 }
