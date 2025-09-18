@@ -147,6 +147,106 @@
     box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
 }
 
+.btn-danger {
+    background: #dc3545;
+    color: white;
+    border: none;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+.btn-danger:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+/* Delete Modal Styles */
+.delete-modal-body {
+    margin-bottom: 1rem;
+}
+
+.delete-options {
+    margin: 1.5rem 0;
+}
+
+.delete-option {
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.delete-option:hover {
+    border-color: #d1d5db;
+    background-color: #f9fafb;
+}
+
+.delete-option input[type="radio"] {
+    display: none;
+}
+
+.delete-option input[type="radio"]:checked + label {
+    background: none;
+}
+
+.delete-option:has(input[type="radio"]:checked) {
+    border-color: var(--primary);
+    background-color: #f0f9ff;
+}
+
+.delete-option label {
+    cursor: pointer;
+    margin: 0;
+    display: block;
+}
+
+.option-header {
+    margin-bottom: 0.5rem;
+    color: var(--text);
+}
+
+.option-description {
+    color: var(--text-light);
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.delete-confirmation {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+}
+
+.context-info {
+    margin: 1rem 0;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background-color: #f9fafb;
+}
+
+.context-info.warning {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #7f1d1d;
+}
+
+.context-info strong {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.context-info p {
+    margin: 0.25rem 0;
+    font-size: 0.875rem;
+}
+
 /* Legend */
 .legend {
     display: flex;
@@ -263,7 +363,7 @@
 }
 
 .student-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
 }
 
 /* ✅ MEJORA: Última tarjeta con más espacio */
@@ -874,5 +974,201 @@
     100% { 
         transform: translateX(0) scale(1);
         opacity: 1;
+    }
+}
+
+/* Sección Finanzas */
+.finance-container {
+    display: grid;
+    gap: 0.6rem;
+    padding: 1rem 0.5rem;
+    padding-bottom: 50px;
+}
+
+.finance-card {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    font-weight: 600;
+    color: var(--finance-color);
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Estado sin configurar */
+.not-configured {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--text-light);
+}
+
+.finance-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.not-configured h3 {
+    color: var(--text);
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+}
+
+.not-configured p {
+    margin: 1rem 0;
+    line-height: 1.5;
+}
+
+.btn-config-main {
+    background: var(--finance-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.btn-config-main:hover {
+    background: var(--finance-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+}
+
+/* Selector de período */
+.period-selector {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--bg-main);
+    border-radius: 8px;
+    margin-top: 0.5rem;
+}
+
+.period-selector button {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    color: var(--text);
+    transition: background 0.2s;
+}
+
+.period-selector button:hover {
+    background: var(--bg-secondary);
+}
+
+.current-period {
+    font-weight: 600;
+    color: var(--finance-color);
+    font-size: 1rem;
+}
+
+/* Grid de resumen */
+.summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.summary-item {
+    text-align: center;
+    padding: 0.75rem;
+    background: var(--bg-main);
+    border-radius: 8px;
+}
+
+.summary-number {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--success);
+    line-height: 1;
+}
+
+.summary-label {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+
+/* Lista de clases */
+.classes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.class-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--bg-main);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    transition: background 0.2s;
+}
+
+.class-item:hover {
+    background: var(--bg-secondary);
+}
+
+.class-student {
+    font-weight: 500;
+    color: var(--text);
+}
+
+.class-amount {
+    color: var(--success);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* Responsive para finanzas */
+@media (max-width: 480px) {
+    .finance-container {
+        padding: 0.75rem 0rem;
+        padding-bottom: 140px;
+    }
+    
+    .summary-grid {
+        gap: 0.5rem;
+    }
+    
+    .summary-item {
+        padding: 0.5rem;
+    }
+    
+    .summary-number {
+        font-size: 1rem;
+    }
+    
+    .class-item {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .not-configured {
+        padding: 1.5rem 0.75rem;
+    }
+    
+    .finance-icon {
+        font-size: 2.5rem;
     }
 }

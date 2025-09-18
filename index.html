@@ -208,25 +208,44 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="students-action-row">
                 <select class="students-filter-combined" id="studentsMainFilter">
+                    <option value="active" selected>Solo activos</option>
                     <option value="">Todos los alumnos</option>
-                    <option value="active">Solo activos</option>
                     <option value="inactive">Solo inactivos</option>
-                    <option value="with-credits">Solo con créditos</option>
-                    <option value="guitar">Solo guitarra</option>
-                    <option value="piano">Solo piano</option>
-                    <option value="violin">Solo violín</option>
-                    <option value="bass">Solo bajo</option>
-                    <option value="drums">Solo batería</option>
                 </select>
                 <button class="btn-new-student-mobile" onclick="openStudentForm()">+ Nuevo</button>
             </div>
-            
+
             <button class="btn-credits-mobile" onclick="openCreditsModal()">
                 💳 Gestionar Créditos
             </button>
+        </div>
+
+        <!-- Header Finance -->
+        <div class="header-finance-content" id="financeHeader" style="display: none;">
+            <div class="finance-layout">
+                <h1 class="finance-title">💰 FINANZAS</h1>
+                <div class="income-amount" id="monthlyIncome">--</div>
+                <div class="dropdown">
+                    <button class="menu-dots" onclick="toggleFinanceMenu()">⋯</button>
+                    <div class="dropdown-content" id="financeDropdown">
+                        <a href="#" class="dropdown-item" onclick="openTariffConfig()">💰 Configurar Tarifa</a>
+                        <a href="#" class="dropdown-item" onclick="changeFinanceMonth()">📅 Cambiar Mes</a>
+                        <a href="#" class="dropdown-item" onclick="openFinanceStats()">📊 Ver Reportes</a>
+                        <a href="#" class="dropdown-item" onclick="exportFinanceData()">📤 Exportar</a>
+                    </div>
+                </div>
+                <div class="period-label" id="currentFinancePeriod">Septiembre 2025</div>
+            </div>
+        </div>
+
+        <!-- Header Ajustes - Simple y minimalista -->
+        <div class="header-settings-content" id="settingsHeader" style="display: none;">
+            <div class="header-simple">
+                <h1>⚙️ CONFIGURACIÓN</h1>
+            </div>
         </div>
     </div>
 
@@ -394,6 +413,46 @@
                     <button type="submit" class="btn btn-absent">Desactivar</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal Delete Student -->
+    <div class="modal" id="deleteStudentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">🗑️ Eliminar Alumno Completamente</h2>
+            </div>
+            <div class="delete-modal-body">
+                <p><strong>¿Estás seguro que deseas eliminar completamente a <span id="deleteStudentName"></span>?</strong></p>
+
+                <div class="context-info warning">
+                    <strong>⚠️ ATENCIÓN: Esta acción es IRREVERSIBLE</strong>
+                    <p>• Se eliminarán TODOS los datos del alumno</p>
+                    <p>• Se borrarán todas las asistencias y recuperaciones</p>
+                    <p>• Se eliminarán todos los créditos</p>
+                    <p>• No se puede deshacer esta acción</p>
+                </div>
+
+                <div class="context-info">
+                    <strong>💡 ¿Solo quieres suspender temporalmente?</strong>
+                    <p>Si el alumno solo suspende clases, usa <strong>"Desactivar"</strong> en lugar de eliminar.
+                    Esto conserva los datos y permite reactivar después.</p>
+                </div>
+
+                <div class="delete-confirmation">
+                    <div class="form-group">
+                        <label class="form-label">Para confirmar la eliminación completa, escribe el nombre del alumno:</label>
+                        <input type="text" class="form-input" id="deleteConfirmationName" placeholder="Nombre completo del alumno">
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDeleteStudent()" disabled>
+                    🗑️ Eliminar Completamente
+                </button>
+            </div>
         </div>
     </div>
 

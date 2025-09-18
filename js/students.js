@@ -1,5 +1,8 @@
 // ✅ VARIABLES GLOBALES para manejar cambio de horario
 let pendingStudentUpdate = null;
+// Variables globales para período
+let currentFinanceMonth = new Date().getMonth() + 1;
+let currentFinanceYear = new Date().getFullYear();
 
 function initStudents() {
     // Event listeners específicos de estudiantes - verificar que existen
@@ -18,11 +21,16 @@ function initStudents() {
 }
 
 function switchTab(tab, event) {
+    // ✅ NUEVO: Resetear filtro de estudiantes al cambiar de sección
+    if (tab !== 'students') {
+        resetStudentsFilter();
+    }
+
     // Actualizar navegación activa
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
     });
-    
+
     // Encontrar el nav-item correcto
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(item => {
@@ -31,7 +39,7 @@ function switchTab(tab, event) {
             item.classList.add('active');
         }
     });
-    
+
     // Ocultar todas las secciones
     const mainContent = document.querySelector('.main-content');
     const studentsSection = document.getElementById('studentsSection');
@@ -42,13 +50,17 @@ function switchTab(tab, event) {
     if (studentsSection) studentsSection.style.display = 'none';
     if (financeSection) financeSection.style.display = 'none';
     if (settingsSection) settingsSection.style.display = 'none';
-    
+
     // Ocultar headers específicos
     const calendarHeader = document.getElementById('calendarHeader');
     const studentsHeader = document.getElementById('studentsHeader');
-    
+    const financeHeader = document.getElementById('financeHeader');
+    const settingsHeader = document.getElementById('settingsHeader');
+
     if (calendarHeader) calendarHeader.style.display = 'none';
     if (studentsHeader) studentsHeader.style.display = 'none';
+    if (financeHeader) financeHeader.style.display = 'none';
+    if (settingsHeader) settingsHeader.style.display = 'none';
     
     // Obtener elemento header y actualizar clase
     const header = document.querySelector('.header');
@@ -69,24 +81,39 @@ function switchTab(tab, event) {
             if (header) header.classList.add('header-students');
             if (studentsHeader) studentsHeader.style.display = 'block';
 
+            // ✅ NUEVO: Asegurar filtro por defecto
+            const mainFilter = document.getElementById('studentsMainFilter');
+            if (mainFilter && mainFilter.value === '') {
+                mainFilter.value = 'active';
+            }
+
+            // Configurar funcionalidades específicas de estudiantes ANTES de mostrar
+            updateStudentsStats();
+            setupStudentsHeaderFilters();
+
+            // Aplicar el filtro inmediatamente para evitar flash de contenido
+            if (mainFilter && mainFilter.value === 'active') {
+                filterStudentsByActiveStatus();
+            } else {
+                renderStudentsList();
+            }
+
             // ✅ NUEVO: Configurar header colapsable
             setTimeout(() => {
                 setupStudentsScrollHeader();
             }, 100);
-            
-            // Configurar funcionalidades específicas de estudiantes
-            updateStudentsStats();
-            setupStudentsHeaderFilters();
-            renderStudentsList();
             break;
             
         case 'finance':
             if (header) header.classList.add('header-finance');
+            if (financeHeader) financeHeader.style.display = 'block';
             showBasicFinanceSection();
+            updateFinanceStats();
             break;
             
         case 'settings':
             if (header) header.classList.add('header-settings');
+            if (settingsHeader) settingsHeader.style.display = 'block';
             showSettingsSection();
             break;
     }
@@ -243,9 +270,15 @@ function renderStudentsList() {
     
     let filteredStudents = students.filter(student => {
         const instrumentMatch = !instrumentFilter || student.instrument === instrumentFilter;
-        const statusMatch = !statusFilter || 
-            (statusFilter === 'active' && student.active) ||
-            (statusFilter === 'inactive' && !student.active);
+
+        // ✅ ACTUALIZADO: Manejo simplificado de filtros
+        let statusMatch = true;
+        if (statusFilter === 'active') {
+            statusMatch = student.active !== false;
+        } else if (statusFilter === 'inactive') {
+            statusMatch = student.active === false;
+        }
+
         return instrumentMatch && statusMatch;
     }).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
@@ -368,8 +401,9 @@ function showStudentDetails(studentId) {
     footer.innerHTML = `
         <button class="btn btn-secondary" onclick="closeModal()">Cerrar</button>
         <button class="btn btn-primary" onclick="editStudent(${studentId})">Editar</button>
-        ${student.active ? `<button class="btn btn-absent" onclick="confirmDeactivateStudent(${studentId})">Desactivar</button>` : 
+        ${student.active ? `<button class="btn btn-absent" onclick="confirmDeactivateStudent(${studentId})">Desactivar</button>` :
                         `<button class="btn btn-success" onclick="reactivateStudent(${studentId})">Reactivar</button>`}
+        <button class="btn btn-danger" onclick="openDeleteStudentModal(${studentId})">🗑️ Eliminar</button>
     `;
     
     modal.classList.add('active');
@@ -1776,9 +1810,6 @@ function showSettingsSection() {
         settingsSection.className = 'students-section';
         
         settingsSection.innerHTML = `
-            <div class="students-header">
-                <h2>⚙️ Configuración</h2>
-            </div>
             
             <div class="settings-content">
                 <div class="student-card">
@@ -1864,32 +1895,82 @@ function confirmResetApp() {
     }
 }
 
-// ✅ TEMPORAL: Función básica para Finanzas
 function showBasicFinanceSection() {
-    // ✅ CORREGIDO: NO ocultar otras secciones aquí, switchTab() ya lo hace
-
-    // Crear sección de finanzas si no existe
     let financeSection = document.getElementById('financeSection');
+    
     if (!financeSection) {
         financeSection = document.createElement('div');
         financeSection.id = 'financeSection';
         financeSection.className = 'students-section';
+        document.body.appendChild(financeSection);
+    }
+    
+    const tariff = parseFloat(localStorage.getItem('classTariff')) || 0;
+    
+    if (tariff === 0) {
+        // Vista sin configurar
         financeSection.innerHTML = `
-            <div class="students-header">
-                <h2>💰 Finanzas</h2>
-            </div>
-            <div style="padding: 2rem; text-align: center; color: var(--text-light);">
-                <p>🚧 Sección en desarrollo</p>
-                <p>Pronto podrás gestionar:</p>
-                <ul style="text-align: left; max-width: 300px; margin: 1rem auto;">
-                    <li>• Pagos por mes</li>
-                    <li>• Ingresos totales</li>
-                    <li>• Reportes financieros</li>
-                    <li>• Estados de cuenta</li>
-                </ul>
+            <div class="finance-container">
+                <div class="finance-card">
+                    <div class="not-configured">
+                        <div class="finance-icon">💰</div>
+                        <h3>Configura tu tarifa</h3>
+                        <p>Define cuánto cobras por clase para ver tus ingresos automáticamente</p>
+                        <button class="btn-config-main" onclick="openTariffConfig()">⚙️ Configurar Tarifa</button>
+                    </div>
+                </div>
             </div>
         `;
-        document.body.appendChild(financeSection);
+    } else {
+        // Vista configurada
+        const currentMonth = new Date().getMonth() + 1;
+        const currentYear = new Date().getFullYear();
+        const monthlyStats = calculateDetailedMonthlyStats(currentMonth, currentYear, tariff);
+        
+        financeSection.innerHTML = `
+            <div class="finance-container">
+                <!-- Selector de Período -->
+                <div class="finance-card">
+                    <div class="card-header">📅 Período</div>
+                    <div class="period-selector">
+                        <button onclick="changeFinancePeriod(-1)">‹</button>
+                        <span class="current-period" id="financePeriodDisplay">${getMonthName(currentMonth)} ${currentYear}</span>
+                        <button onclick="changeFinancePeriod(1)">›</button>
+                    </div>
+                </div>
+
+                <!-- Resumen del Mes -->
+                <div class="finance-card">
+                    <div class="card-header">📊 Resumen</div>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="summary-number">$${monthlyStats.total.toLocaleString()}</div>
+                            <div class="summary-label">Total</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-number">${monthlyStats.totalClasses}</div>
+                            <div class="summary-label">Clases</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-number">${monthlyStats.regularClasses}</div>
+                            <div class="summary-label">Regulares</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-number">${monthlyStats.recoveryClasses}</div>
+                            <div class="summary-label">Recuperaciones</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detalle por Estudiante -->
+                <div class="finance-card">
+                    <div class="card-header">📋 Detalle por Estudiante</div>
+                    <div class="classes-list" id="studentsDetailList">
+                        ${generateStudentsDetail(monthlyStats.studentDetails, tariff)}
+                    </div>
+                </div>
+            </div>
+        `;
     }
     
     financeSection.style.display = 'block';
@@ -1960,15 +2041,11 @@ function handleMainFilterChange() {
     
     // Aplicar filtro (código existente)
     switch(filterValue) {
+        case 'active':
+            filterStudentsByActiveStatus();
+            break;
         case 'inactive':
             filterStudentsByInactiveStatus();
-            break;
-        case 'guitar':
-        case 'piano':
-        case 'violin':
-        case 'bass':
-        case 'drums':
-            filterStudentsByInstrument(filterValue);
             break;
         default:
             renderStudentsList();
@@ -1987,18 +2064,10 @@ function filterStudentsByInactiveStatus() {
     renderFilteredStudents(inactiveStudents);
 }
 
-// ✅ NUEVA: Filtrar estudiantes con créditos
+// ✅ NUEVA: Filtrar estudiantes con créditos (para el tab de créditos)
 function filterStudentsByCredits() {
     const studentsWithCredits = students.filter(s => (s.licenseCredits || 0) > 0);
     renderFilteredStudents(studentsWithCredits);
-}
-
-// ✅ NUEVA: Filtrar por instrumento
-function filterStudentsByInstrument(instrument) {
-    const instrumentStudents = students.filter(s => 
-        s.instrument && s.instrument.toLowerCase() === instrument.toLowerCase()
-    );
-    renderFilteredStudents(instrumentStudents);
 }
 
 // ✅ NUEVA: Renderizar lista filtrada
@@ -2077,7 +2146,269 @@ function setActiveTab(tabType) {
 function resetActiveTabs() {
     const activeTab = document.getElementById('activeStudentsTab');
     const creditsTab = document.getElementById('creditsTab');
-    
+
     if (activeTab) activeTab.classList.remove('active');
     if (creditsTab) creditsTab.classList.remove('active');
+}
+
+// ===== FUNCIONES DE ELIMINACIÓN DE ALUMNOS =====
+
+let currentStudentToDelete = null;
+
+function openDeleteStudentModal(studentId) {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+
+    currentStudentToDelete = student;
+
+    // Cerrar modal actual y abrir modal de eliminación
+    closeModal();
+
+    const modal = document.getElementById('deleteStudentModal');
+    const studentNameSpan = document.getElementById('deleteStudentName');
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+
+    studentNameSpan.textContent = student.name;
+
+    // Reset modal state
+    confirmBtn.disabled = true;
+    document.getElementById('deleteConfirmationName').value = '';
+
+    // Agregar event listener para validar confirmación
+    const confirmationInput = document.getElementById('deleteConfirmationName');
+    confirmationInput.addEventListener('input', validateDeleteConfirmation);
+
+    modal.classList.add('active');
+}
+
+function validateDeleteConfirmation() {
+    const confirmationInput = document.getElementById('deleteConfirmationName');
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+
+    if (currentStudentToDelete && confirmationInput.value.trim() === currentStudentToDelete.name) {
+        confirmBtn.disabled = false;
+    } else {
+        confirmBtn.disabled = true;
+    }
+}
+
+function confirmDeleteStudent() {
+    if (!currentStudentToDelete) return;
+
+    // Solo eliminación completa
+    hardDeleteStudent(currentStudentToDelete.id);
+}
+
+function hardDeleteStudent(studentId) {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+
+    const studentName = student.name;
+
+    // Eliminar todas las asistencias del alumno
+    attendance = attendance.filter(att => att.studentId !== studentId);
+
+    // Eliminar todas las clases regulares del alumno
+    regularClasses = regularClasses.filter(rc => rc.studentId !== studentId);
+
+    // Eliminar todas las clases especiales (recuperaciones) del alumno
+    specialClasses = specialClasses.filter(sc => sc.studentId !== studentId);
+
+    // Eliminar el alumno del array
+    const studentIndex = students.findIndex(s => s.id === studentId);
+    if (studentIndex !== -1) {
+        students.splice(studentIndex, 1);
+    }
+
+    // Guardar cambios
+    saveData();
+
+    // Actualizar interfaz
+    renderStudentsList();
+    updateStudentsStats();
+
+    // Actualizar calendario si existe la función
+    if (typeof renderWeekView === 'function') {
+        renderWeekView();
+    }
+
+    // Cerrar modal y mostrar mensaje
+    closeModal();
+    showToast(`${studentName} y todos sus datos han sido eliminados completamente.`, 'success');
+
+    currentStudentToDelete = null;
+}
+
+// ✅ NUEVA: Resetear filtro de estudiantes
+function resetStudentsFilter() {
+    const mainFilter = document.getElementById('studentsMainFilter');
+    if (mainFilter) {
+        mainFilter.value = 'active'; // Por defecto Solo activos
+        // Aplicar el filtro inmediatamente
+        filterStudentsByActiveStatus();
+    }
+}
+
+// Finance Functions
+function updateFinanceStats() {
+    const tariff = parseFloat(localStorage.getItem('classTariff')) || 0;
+    
+    if (tariff === 0) {
+        document.getElementById('monthlyIncome').textContent = '--';
+        document.getElementById('currentFinancePeriod').textContent = '⚙️ Configurar tarifa';
+        return;
+    }
+    
+    const monthlyClasses = calculateMonthlyClasses(currentFinanceMonth, currentFinanceYear);
+    const monthlyIncome = monthlyClasses * tariff;
+    
+    document.getElementById('monthlyIncome').textContent = `$${monthlyIncome.toLocaleString()}`;
+    document.getElementById('currentFinancePeriod').textContent = getMonthName(currentFinanceMonth) + ' ' + currentFinanceYear;
+}
+
+function calculateMonthlyClasses(month, year) {
+    // Contar clases con asistencia marcada (presente/ausente) del mes actual
+    return attendance.filter(a => {
+        const attendanceDate = parseLocalDate(a.date);
+        return attendanceDate.getMonth() + 1 === month && 
+               attendanceDate.getFullYear() === year &&
+               (a.status === 'present' || a.status === 'absent');
+    }).length;
+}
+
+function getMonthName(month) {
+    const months = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    return months[month];
+}
+
+function toggleFinanceMenu() {
+    const dropdown = document.getElementById('financeDropdown');
+    dropdown.classList.toggle('show');
+}
+
+function openTariffConfig() {
+    const currentTariff = localStorage.getItem('classTariff') || '';
+    const newTariff = prompt('Ingresa tu tarifa por clase:', currentTariff);
+    
+    if (newTariff !== null && !isNaN(newTariff) && newTariff > 0) {
+        localStorage.setItem('classTariff', newTariff);
+        updateFinanceStats();
+        showToast(`💰 Tarifa configurada: $${newTariff} por clase`);
+    }
+}
+
+// Cerrar dropdown al hacer click fuera
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.dropdown')) {
+        document.querySelectorAll('.dropdown-content').forEach(d => d.classList.remove('show'));
+    }
+});
+
+function calculateDetailedMonthlyStats(month, year, tariff) {
+    const monthlyAttendances = attendance.filter(a => {
+        const attendanceDate = parseLocalDate(a.date);
+        return attendanceDate.getMonth() + 1 === month && 
+               attendanceDate.getFullYear() === year &&
+               (a.status === 'present' || a.status === 'absent');
+    });
+
+    const studentStats = {};
+    let regularCount = 0;
+    let recoveryCount = 0;
+
+    monthlyAttendances.forEach(a => {
+        // Determinar si es clase regular o recuperación
+        const isRecovery = specialClasses.some(sc => 
+            sc.id === a.classId && sc.type === 'recovery'
+        );
+        
+        if (isRecovery) {
+            recoveryCount++;
+        } else {
+            regularCount++;
+        }
+
+        // Obtener ID del estudiante
+        let studentId;
+        if (isRecovery) {
+            const recovery = specialClasses.find(sc => sc.id === a.classId);
+            studentId = recovery.studentId;
+        } else {
+            const regularClass = regularClasses.find(rc => rc.id === a.classId);
+            studentId = regularClass?.studentId;
+        }
+
+        if (studentId) {
+            if (!studentStats[studentId]) {
+                const student = students.find(s => s.id === studentId);
+                studentStats[studentId] = {
+                    name: student?.name || 'Desconocido',
+                    classes: 0,
+                    amount: 0
+                };
+            }
+            studentStats[studentId].classes++;
+            studentStats[studentId].amount += tariff;
+        }
+    });
+
+    const totalClasses = monthlyAttendances.length;
+    const total = totalClasses * tariff;
+
+    return {
+        total,
+        totalClasses,
+        regularClasses: regularCount,
+        recoveryClasses: recoveryCount,
+        studentDetails: Object.values(studentStats).sort((a, b) => b.amount - a.amount)
+    };
+}
+
+function generateStudentsDetail(studentDetails, tariff) {
+    if (studentDetails.length === 0) {
+        return `
+            <div style="text-align: center; padding: 2rem; color: #64748b;">
+                <p>No hay clases registradas para este período</p>
+            </div>
+        `;
+    }
+
+    return studentDetails.map(student => `
+        <div class="class-item">
+            <span class="class-student">${student.name} (${student.classes} clases)</span>
+            <span class="class-amount">$${student.amount.toLocaleString()}</span>
+        </div>
+    `).join('');
+}
+
+function changeFinancePeriod(direction) {
+    currentFinanceMonth += direction;
+    
+    if (currentFinanceMonth > 12) {
+        currentFinanceMonth = 1;
+        currentFinanceYear++;
+    } else if (currentFinanceMonth < 1) {
+        currentFinanceMonth = 12;
+        currentFinanceYear--;
+    }
+    
+    // Actualizar display
+    document.getElementById('financePeriodDisplay').textContent = 
+        `${getMonthName(currentFinanceMonth)} ${currentFinanceYear}`;
+    
+    // Actualizar stats
+    const tariff = parseFloat(localStorage.getItem('classTariff')) || 0;
+    const monthlyStats = calculateDetailedMonthlyStats(currentFinanceMonth, currentFinanceYear, tariff);
+    
+    // Actualizar resumen
+    const summaryNumbers = document.querySelectorAll('.summary-number');
+    summaryNumbers[0].textContent = `$${monthlyStats.total.toLocaleString()}`;
+    summaryNumbers[1].textContent = monthlyStats.totalClasses;
+    summaryNumbers[2].textContent = monthlyStats.regularClasses;
+    summaryNumbers[3].textContent = monthlyStats.recoveryClasses;
+    
+    // Actualizar detalle de estudiantes
+    document.getElementById('studentsDetailList').innerHTML = 
+        generateStudentsDetail(monthlyStats.studentDetails, tariff);
 }

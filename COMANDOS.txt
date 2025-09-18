@@ -1,0 +1,4 @@
+● Bash(cd "/c/Users/Usuario/Documents/GitHub/TEMPUSCLASS" && pwd && ls -la)
+  ⎿  /c/Users/Usuario/Documents/GitHub/TEMPUSCLASS
+
+para CLAUDE
