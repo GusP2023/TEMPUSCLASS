@@ -1581,18 +1581,23 @@ function updateStudentsCounter() {
 // 🔍 VALIDACIÓN EN TIEMPO REAL
 function setupMultipleFormValidation() {
     const form = document.getElementById('multipleStudentsForm');
-    
-    // Evento para validar cuando cambian los campos
-    form.addEventListener('input', debounce(validateAllRows, 500));
-    form.addEventListener('change', validateAllRows);
+
+    // ❌ DESHABILITADO: No validar automáticamente
+    // Las validaciones solo se ejecutan al presionar botones específicos
+    // form.addEventListener('input', debounce(validateAllRows, 500));
+    // form.addEventListener('change', validateAllRows);
 }
 
 function setupRowValidation(row) {
     const inputs = row.querySelectorAll('input, select');
-    
+
     inputs.forEach(input => {
-        input.addEventListener('blur', () => validateSingleRow(row));
-        input.addEventListener('change', () => validateSingleRow(row));
+        // No agregar validación automática en blur/change
+        // Las validaciones solo se ejecutarán cuando se presionen los botones específicos
+        input.addEventListener('input', () => {
+            // Limpiar estilos de error cuando el usuario empiece a corregir
+            clearRowValidationUI(row);
+        });
     });
 }
 
@@ -1608,106 +1613,206 @@ function extractRowData(row) {
     };
 }
 
-function checkConflictsWithExistingStudents(data) {
+function checkConflictsWithExistingStudents(data, studentNumber = '') {
     const errors = [];
     const existingSchedules = getAllExistingSchedules();
-    
+    const prefix = studentNumber ? `Estudiante ${studentNumber}: ` : '';
+
     // Verificar primer horario
     if (data.day1 && data.time1) {
-        const conflict1 = existingSchedules.find(s => 
+        const conflict1 = existingSchedules.find(s =>
             s.day === data.day1 && s.time === data.time1
         );
         if (conflict1) {
-            errors.push(`Horario ${getDayName(data.day1)} ${data.time1} ocupado por ${conflict1.studentName}`);
+            errors.push(`${prefix}Conflicto de horario ${getDayName(data.day1)} ${data.time1} - ya ocupado por "${conflict1.studentName}"`);
         }
     }
-    
+
     // Verificar segundo horario
     if (data.day2 && data.time2) {
-        const conflict2 = existingSchedules.find(s => 
+        const conflict2 = existingSchedules.find(s =>
             s.day === data.day2 && s.time === data.time2
         );
         if (conflict2) {
-            errors.push(`Horario ${getDayName(data.day2)} ${data.time2} ocupado por ${conflict2.studentName}`);
+            errors.push(`${prefix}Conflicto de horario ${getDayName(data.day2)} ${data.time2} - ya ocupado por "${conflict2.studentName}"`);
         }
     }
-    
+
     return errors;
 }
 
-function checkConflictsWithOtherRows(currentIndex, currentData) {
+function checkConflictsWithOtherRows(currentIndex, currentData, currentStudentNumber = '') {
     const errors = [];
     const allRows = document.querySelectorAll('.student-row');
-    
+    const prefix = currentStudentNumber ? `Estudiante ${currentStudentNumber}: ` : '';
+
     allRows.forEach((row, index) => {
         if (index === currentIndex) return; // No comparar consigo mismo
-        
+
         const otherData = extractRowData(row);
         const otherStudentNumber = index + 1;
-        
+
+        // Solo validar conflictos si el otro estudiante fue creado ANTES (índice menor)
+        // Esto significa que el estudiante actual está intentando usar un horario ya ocupado
+        if (index >= currentIndex) return; // Solo comparar con estudiantes anteriores
+
+        // Solo validar si el otro estudiante tiene datos completos
+        if (!otherData.name || !otherData.instrument) return;
+
         // Verificar conflictos de horario entre filas
         if (currentData.day1 && currentData.time1) {
             // Conflicto con primer horario del otro
             if (otherData.day1 === currentData.day1 && otherData.time1 === currentData.time1) {
-                errors.push(`Conflicto con Estudiante ${otherStudentNumber}: ${getDayName(currentData.day1)} ${currentData.time1}`);
+                const otherName = otherData.name || `Estudiante ${otherStudentNumber}`;
+                errors.push(`${prefix}Conflicto de horario ${getDayName(currentData.day1)} ${currentData.time1} - ya usado por "${otherName}"`);
             }
             // Conflicto con segundo horario del otro
             if (otherData.day2 === currentData.day1 && otherData.time2 === currentData.time1) {
-                errors.push(`Conflicto con Estudiante ${otherStudentNumber}: ${getDayName(currentData.day1)} ${currentData.time1}`);
+                const otherName = otherData.name || `Estudiante ${otherStudentNumber}`;
+                errors.push(`${prefix}Conflicto de horario ${getDayName(currentData.day1)} ${currentData.time1} - ya usado por "${otherName}"`);
             }
         }
-        
+
         if (currentData.day2 && currentData.time2) {
             // Conflicto con primer horario del otro
             if (otherData.day1 === currentData.day2 && otherData.time1 === currentData.time2) {
-                errors.push(`Conflicto con Estudiante ${otherStudentNumber}: ${getDayName(currentData.day2)} ${currentData.time2}`);
+                const otherName = otherData.name || `Estudiante ${otherStudentNumber}`;
+                errors.push(`${prefix}Conflicto de horario ${getDayName(currentData.day2)} ${currentData.time2} - ya usado por "${otherName}"`);
             }
             // Conflicto con segundo horario del otro
             if (otherData.day2 === currentData.day2 && otherData.time2 === currentData.time2) {
-                errors.push(`Conflicto con Estudiante ${otherStudentNumber}: ${getDayName(currentData.day2)} ${currentData.time2}`);
+                const otherName = otherData.name || `Estudiante ${otherStudentNumber}`;
+                errors.push(`${prefix}Conflicto de horario ${getDayName(currentData.day2)} ${currentData.time2} - ya usado por "${otherName}"`);
             }
         }
     });
-    
+
     return errors;
+}
+
+function clearRowValidationUI(row) {
+    row.classList.remove('has-conflict');
+
+    const inputs = row.querySelectorAll('input, select');
+    inputs.forEach(input => {
+        const formGroup = input.closest('.form-group-inline');
+        if (formGroup) {
+            formGroup.classList.remove('valid', 'invalid');
+        }
+    });
 }
 
 function updateRowValidationUI(row, errors) {
     const inputs = row.querySelectorAll('input, select');
-    
+
+    // Primero limpiar todos los estilos de error
+    inputs.forEach(input => {
+        const formGroup = input.closest('.form-group-inline');
+        if (formGroup) {
+            formGroup.classList.remove('invalid');
+            if (input.value) {
+                formGroup.classList.add('valid');
+            }
+        }
+    });
+
     if (errors.length > 0) {
         row.classList.add('has-conflict');
-        
-        inputs.forEach(input => {
-            const formGroup = input.closest('.form-group-inline');
-            if (formGroup) {
-                formGroup.classList.remove('valid');
-                formGroup.classList.add('invalid');
+
+        // Analizar cada error para determinar qué campo marcar
+        errors.forEach(error => {
+            const errorLower = error.toLowerCase();
+
+            // Marcar campo de nombre si tiene error
+            if (errorLower.includes('nombre') || errorLower.includes('falta el nombre')) {
+                const nameInput = row.querySelector('.student-name');
+                if (nameInput) {
+                    const formGroup = nameInput.closest('.form-group-inline');
+                    if (formGroup) {
+                        formGroup.classList.remove('valid');
+                        formGroup.classList.add('invalid');
+                    }
+                }
+            }
+
+            // Marcar campo de instrumento si tiene error
+            if (errorLower.includes('instrumento')) {
+                const instrumentSelect = row.querySelector('.student-instrument');
+                if (instrumentSelect) {
+                    const formGroup = instrumentSelect.closest('.form-group-inline');
+                    if (formGroup) {
+                        formGroup.classList.remove('valid');
+                        formGroup.classList.add('invalid');
+                    }
+                }
+            }
+
+            // Marcar campos de horario si tienen conflicto
+            if (errorLower.includes('conflicto de horario') || errorLower.includes('primer horario')) {
+                // Determinar si es el primer o segundo horario
+                if (errorLower.includes('segundo horario') || errorLower.includes('hora 2') || errorLower.includes('día 2')) {
+                    const day2Select = row.querySelector('.schedule-day-2');
+                    const time2Select = row.querySelector('.schedule-time-2');
+                    [day2Select, time2Select].forEach(select => {
+                        if (select) {
+                            const formGroup = select.closest('.form-group-inline');
+                            if (formGroup) {
+                                formGroup.classList.remove('valid');
+                                formGroup.classList.add('invalid');
+                            }
+                        }
+                    });
+                } else {
+                    // Marcar primer horario
+                    const day1Select = row.querySelector('.schedule-day');
+                    const time1Select = row.querySelector('.schedule-time');
+                    [day1Select, time1Select].forEach(select => {
+                        if (select) {
+                            const formGroup = select.closest('.form-group-inline');
+                            if (formGroup) {
+                                formGroup.classList.remove('valid');
+                                formGroup.classList.add('invalid');
+                            }
+                        }
+                    });
+                }
+            }
+
+            // Marcar campo de fecha si tiene error
+            if (errorLower.includes('fecha')) {
+                const dateInput = row.querySelector('.start-date');
+                if (dateInput) {
+                    const formGroup = dateInput.closest('.form-group-inline');
+                    if (formGroup) {
+                        formGroup.classList.remove('valid');
+                        formGroup.classList.add('invalid');
+                    }
+                }
             }
         });
     } else {
         row.classList.remove('has-conflict');
-        
-        inputs.forEach(input => {
-            const formGroup = input.closest('.form-group-inline');
-            if (formGroup) {
-                formGroup.classList.remove('invalid');
-                if (input.value) {
-                    formGroup.classList.add('valid');
-                }
-            }
-        });
     }
 }
 
 function updateValidationSummary(errors) {
     const summaryDiv = document.getElementById('validationSummary');
-    
+
+    // Verificar que el elemento existe
+    if (!summaryDiv) {
+        // Si no existe el elemento, mostrar errores por toast
+        if (errors.length > 0) {
+            const errorMessage = errors.slice(0, 3).join('; ');
+            showToast(`❌ Errores: ${errorMessage}${errors.length > 3 ? '...' : ''}`);
+        }
+        return;
+    }
+
     if (errors.length === 0) {
         summaryDiv.style.display = 'none';
         return;
     }
-    
+
     summaryDiv.innerHTML = `
         <h3>⚠️ Errores que debes corregir:</h3>
         <ul class="validation-list">
@@ -2290,11 +2395,38 @@ function toggleFinanceMenu() {
 function openTariffConfig() {
     const currentTariff = localStorage.getItem('classTariff') || '';
     const newTariff = prompt('Ingresa tu tarifa por clase:', currentTariff);
-    
-    if (newTariff !== null && !isNaN(newTariff) && newTariff > 0) {
-        localStorage.setItem('classTariff', newTariff);
-        updateFinanceStats();
-        showToast(`💰 Tarifa configurada: $${newTariff} por clase`);
+
+    if (newTariff !== null && !isNaN(newTariff)) {
+        const tariffValue = parseFloat(newTariff);
+
+        if (tariffValue > 0) {
+            localStorage.setItem('classTariff', newTariff);
+
+            // ✅ FORZAR ACTUALIZACIÓN si estamos en la sección finanzas
+            const activeNavItem = document.querySelector('.nav-item.active');
+            const isFinanceActive = activeNavItem && activeNavItem.getAttribute('onclick')?.includes("'finance'");
+
+            if (isFinanceActive) {
+                showBasicFinanceSection();
+            }
+
+            updateFinanceStats();
+            showToast(`💰 Tarifa configurada: $${newTariff} por clase`);
+        } else if (tariffValue === 0) {
+            // ✅ RESETEAR A VISTA DE PRIMERA VEZ cuando tarifa es 0
+            localStorage.setItem('classTariff', '0');
+
+            // ✅ FORZAR ACTUALIZACIÓN si estamos en la sección finanzas
+            const activeNavItem = document.querySelector('.nav-item.active');
+            const isFinanceActive = activeNavItem && activeNavItem.getAttribute('onclick')?.includes("'finance'");
+
+            if (isFinanceActive) {
+                showBasicFinanceSection();
+            }
+
+            updateFinanceStats();
+            showToast('⚙️ Tarifa reseteada - Vista inicial restaurada');
+        }
     }
 }
 

@@ -30,13 +30,7 @@
     max-width: 400px;
     max-height: 80vh;
     overflow-y: auto;
-}
-
-.modal-header {
-    margin-bottom: 1.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    margin-top: 0;
 }
 
 .modal-title {
@@ -73,9 +67,11 @@
 }
 
 .modal-footer {
-    display: flex;
-    gap: 1rem;
-    margin-top: 1.5rem;
+    flex-shrink: 0; /* No se encoge */
+    position: sticky; /* Se queda fijo abajo */
+    bottom: 0;
+    background: white; /* Fondo sólido */
+    border-top: 1px solid var(--border);
 }
 
 .btn {

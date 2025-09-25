@@ -24,7 +24,6 @@
         <div class="modal-content welcome-modal">
             <div class="welcome-header">
                 <h1>🎵 ¡Bienvenido a MusicClass Manager!</h1>
-                <p>Sistema de gestión de clases de música</p>
             </div>
             
             <div class="welcome-options">
@@ -47,16 +46,6 @@
                     </div>
                     <div class="option-arrow">→</div>
                 </div>
-                
-                <div class="welcome-option" onclick="startFromScratch()">
-                    <div class="option-icon">🎯</div>
-                    <div class="option-content">
-                        <h3>Empezar desde Cero</h3>
-                        <p>Comenzar con el calendario vacío</p>
-                        <small>Agregar alumnos uno por uno después</small>
-                    </div>
-                    <div class="option-arrow">→</div>
-                </div>
             </div>
             
             <div class="welcome-footer">
@@ -65,42 +54,135 @@
         </div>
     </div>
 
-    <!-- Modal Creación Múltiple -->
+    <!-- Modal Creación Múltiple - ESTRUCTURA MEJORADA -->
     <div class="modal" id="multipleStudentsModal">
         <div class="modal-content multiple-students-modal">
+            <!-- ✅ NUEVO: Header con indicador de pasos -->
             <div class="modal-header">
-                <h2>📝 Configuración Inicial - Múltiples Alumnos</h2>
-                <p>Crea todos tus estudiantes de una vez</p>
+                <div class="header-content">
+                    <h2>🎓 Configuración Inicial - Múltiples Alumnos</h2>
+                    <p>Crea todos tus estudiantes de una vez</p>
+                </div>
+                
+                <!-- ✅ NUEVO: Indicador de pasos -->
+                <div class="steps-indicator">
+                    <div class="step active" id="step1">
+                        <div class="step-number">1</div>
+                        <div class="step-label">Agregar datos</div>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step" id="step2">
+                        <div class="step-number">2</div>
+                        <div class="step-label">Validar</div>
+                    </div>
+                    <div class="step-connector"></div>
+                    <div class="step" id="step3">
+                        <div class="step-number">3</div>
+                        <div class="step-label">Confirmar</div>
+                    </div>
+                </div>
             </div>
             
-            <div class="multiple-form-container">
-                <form id="multipleStudentsForm">
-                    <div class="students-grid" id="studentsGrid">
-                        <!-- Se genera dinámicamente -->
-                    </div>
-                    
-                    <div class="multiple-form-actions">
-                        <button type="button" class="btn-add-student" onclick="addStudentRow()">
-                            ➕ Agregar Otro Alumno
-                        </button>
-                        <div class="students-counter">
-                            <span id="studentsCounter">3 estudiantes</span>
+            <!-- ✅ NUEVO: Layout con dashboard lateral -->
+            <div class="multiple-content-layout">
+                <!-- Panel principal de formularios -->
+                <div class="multiple-form-container">
+                    <form id="multipleStudentsForm">
+                        <div class="students-grid" id="studentsGrid">
+                            <!-- Se genera dinámicamente -->
+                        </div>
+                        
+                        <div class="multiple-form-actions">
+                            <button type="button" class="btn-add-student" onclick="addStudentRow()">
+                                ➕ Agregar Otro Alumno
+                            </button>
+                        </div>
+                        
+                        <div class="validation-summary" id="validationSummary" style="display: none;">
+                            <!-- Conflictos de horarios se muestran aquí -->
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- ✅ NUEVO: Dashboard lateral 
+                <div class="dashboard-panel" id="dashboardPanel">
+                    <!-- Progress bar --
+                    <div class="progress-section">
+                        <div class="progress-header">
+                            <span class="progress-title">📊 Progreso</span>
+                            <span class="progress-percentage" id="progressPercentage">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
                         </div>
                     </div>
                     
-                    <div class="validation-summary" id="validationSummary" style="display: none;">
-                        <!-- Conflictos de horarios se muestran aquí -->
+                    <!-- Resumen de estudiantes --
+                    <div class="students-summary">
+                        <div class="summary-header">
+                            <span class="summary-title">👥 Resumen</span>
+                            <div class="students-counter">
+                                <span class="counter-valid" id="validStudentsCount">0</span>
+                                <span class="counter-separator">/</span>
+                                <span class="counter-total" id="totalStudentsCount">0</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Lista compacta de estudiantes --
+                        <div class="students-preview" id="studentsPreview">
+                            <div class="empty-state" id="emptyState">
+                                <div class="empty-icon">📝</div>
+                                <p>Agrega tu primer estudiante para ver el resumen aquí</p>
+                            </div>
+                        </div>
                     </div>
                     
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="goBackToWelcome()">
-                            ← Volver
-                        </button>
-                        <button type="submit" class="btn btn-primary">
-                            ✅ Crear Todos los Alumnos
-                        </button>
+                    <!-- Horarios ocupados --
+                    <div class="schedules-overview" id="schedulesOverview" style="display: none;">
+                        <div class="overview-header">
+                            <span class="overview-title">📅 Horarios</span>
+                        </div>
+                        <div class="schedules-grid" id="schedulesGrid">
+                            <!-- Se genera dinámicamente --
+                        </div>
                     </div>
-                </form>
+                </div> -->
+            </div>
+            
+            <!-- Footer con botones -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="goBackToWelcome()">
+                    ← Volver
+                </button>
+                <button type="button" class="btn btn-preview" id="previewBtn" onclick="showFinalPreview()" style="display: none;">
+                    👀 Vista Previa Final
+                </button>
+                <button type="button" class="btn btn-primary" id="createBtn" onclick="submitMultipleStudents()" disabled>
+                    ✅ Crear Todos los Alumnos
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ NUEVO: Modal de Vista Previa Final -->
+    <div class="modal" id="finalPreviewModal">
+        <div class="modal-content preview-modal">
+            <div class="modal-header">
+                <h2>👀 Vista Previa Final</h2>
+                <p>Revisa todos los datos antes de crear los estudiantes</p>
+            </div>
+            
+            <div class="preview-content" id="finalPreviewContent">
+                <!-- Se genera dinámicamente -->
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeFinalPreview()">
+                    ← Editar
+                </button>
+                <button type="button" class="btn btn-success" onclick="confirmCreateStudents()">
+                    ✅ Confirmar y Crear
+                </button>
             </div>
         </div>
     </div>
@@ -153,6 +235,9 @@
                     </div>
                     
                     <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="goBackToWelcome()">
+                            ← Volver al Inicio
+                        </button>
                         <button type="button" class="btn btn-secondary" onclick="closeImportModal()">
                             Cancelar
                         </button>

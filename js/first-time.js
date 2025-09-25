@@ -15,23 +15,124 @@ function showFirstTimeModal() {
     });
 }
 
+// 🎬 FUNCIÓN PARA TRANSICIONES FLUIDAS ENTRE MODALES
+function transitionBetweenModals(fromModalId, toModalId, onComplete, onPrepare, reverse = false) {
+    const fromModal = document.getElementById(fromModalId);
+    const toModal = document.getElementById(toModalId);
+
+    if (!fromModal || !toModal) return;
+
+    const fromContent = fromModal.querySelector('.modal-content');
+    const toContent = toModal.querySelector('.modal-content');
+
+    // Determinar dirección de animación
+    const exitDirection = reverse ? 'translateX(50px) scale(0.95)' : 'translateX(-50px) scale(0.95)';
+    const enterFromDirection = reverse ? 'translateX(-50px) scale(0.95)' : 'translateX(50px) scale(0.95)';
+
+    // Fase 1: Animar salida del modal actual
+    if (fromContent) {
+        fromContent.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+        fromContent.style.transform = exitDirection;
+        fromContent.style.opacity = '0';
+    }
+
+    setTimeout(() => {
+        // Fase 2: Cambiar modales y preparar contenido
+        fromModal.classList.remove('active');
+        toModal.classList.add('active');
+
+        // Ejecutar preparación del modal ANTES de la animación de entrada
+        if (onPrepare) {
+            onPrepare();
+        }
+
+        // Fase 3: Preparar entrada del nuevo modal
+        if (toContent) {
+            toContent.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+            toContent.style.transform = enterFromDirection;
+            toContent.style.opacity = '0';
+        }
+
+        // Fase 4: Animar entrada del nuevo modal
+        setTimeout(() => {
+            if (toContent) {
+                toContent.style.transform = 'translateX(0) scale(1)';
+                toContent.style.opacity = '1';
+            }
+
+            // Ejecutar callback después de la animación
+            setTimeout(() => {
+                // Limpiar estilos de transición
+                if (fromContent) {
+                    fromContent.style.transition = '';
+                    fromContent.style.transform = '';
+                    fromContent.style.opacity = '';
+                }
+                if (toContent) {
+                    toContent.style.transition = '';
+                    toContent.style.transform = '';
+                    toContent.style.opacity = '';
+                }
+
+                if (onComplete) {
+                    onComplete();
+                }
+            }, 300);
+        }, 50);
+    }, 300);
+}
+
 // 📝 FUNCIONES DE BIENVENIDA
 function openMultipleStudentsForm() {
-    closeModal(); // Cerrar modal de bienvenida
+    // Agregar efecto visual de clic
+    const option = event.currentTarget;
+    option.style.transform = 'scale(0.95)';
+    option.style.opacity = '0.8';
+
     setTimeout(() => {
-        const modal = document.getElementById('multipleStudentsModal');
-        modal.classList.add('active');
-        initializeMultipleStudentsForm();
-    }, 200);
+        option.style.transform = 'scale(1)';
+        option.style.opacity = '1';
+    }, 150);
+
+    // Transición fluida entre modales con precarga del formulario
+    transitionBetweenModals('firstTimeModal', 'multipleStudentsModal',
+        () => {
+            // Callback final: resetear scroll al top
+            const modal = document.getElementById('multipleStudentsModal');
+            const scrollContainer = modal.querySelector('.multiple-form-container');
+            if (scrollContainer) {
+                scrollContainer.scrollTop = 0;
+            }
+        },
+        () => {
+            // Callback de preparación: inicializar formulario mientras el modal se hace visible
+            initializeMultipleStudentsForm();
+        }
+    );
 }
 
 function openImportModal() {
-    closeModal(); // Cerrar modal de bienvenida
+    // Agregar efecto visual de clic
+    const option = event.currentTarget;
+    option.style.transform = 'scale(0.95)';
+    option.style.opacity = '0.8';
+
     setTimeout(() => {
-        const modal = document.getElementById('importModal');
-        modal.classList.add('active');
+        option.style.transform = 'scale(1)';
+        option.style.opacity = '1';
+    }, 150);
+
+    // Transición fluida entre modales
+    transitionBetweenModals('firstTimeModal', 'importModal', () => {
         setupImportForm();
-    }, 200);
+
+        // Resetear scroll al top
+        const modal = document.getElementById('importModal');
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.scrollTop = 0;
+        }
+    });
 }
 
 function startFromScratch() {
@@ -43,21 +144,46 @@ function startFromScratch() {
 }
 
 function goBackToWelcome() {
-    closeModal(); // Cerrar modal actual
-    
     // ✅ CORREGIDO: Solo mostrar bienvenida si realmente es primera vez
-    const hasData = students.length > 0 || 
-                   regularClasses.length > 0 || 
+    const hasData = students.length > 0 ||
+                   regularClasses.length > 0 ||
                    specialClasses.length > 0 ||
                    localStorage.getItem('appInitialized');
-    
+
     if (!hasData) {
-        // Si realmente no hay datos, mostrar bienvenida
-        setTimeout(() => {
-            showFirstTimeModal();
-        }, 200);
+        // Determinar modal actual para transición fluida
+        const currentModal = document.querySelector('.modal.active');
+        const currentModalId = currentModal ? currentModal.id : null;
+
+        if (currentModalId) {
+            transitionBetweenModals(currentModalId, 'firstTimeModal',
+                () => {
+                    // Resetear scroll al top
+                    const modal = document.getElementById('firstTimeModal');
+                    const modalContent = modal.querySelector('.modal-content');
+                    if (modalContent) {
+                        modalContent.scrollTop = 0;
+                    }
+                },
+                null, // No necesita preparación especial
+                true  // ✅ ANIMACIÓN REVERSA para "volver"
+            );
+        } else {
+            // Fallback si no se detecta modal actual
+            closeModal();
+            setTimeout(() => {
+                const modal = document.getElementById('firstTimeModal');
+                modal.classList.add('active');
+
+                const modalContent = modal.querySelector('.modal-content');
+                if (modalContent) {
+                    modalContent.scrollTop = 0;
+                }
+            }, 200);
+        }
     } else {
         // Si ya hay datos, simplemente cerrar y volver al calendario
+        closeModal();
         renderWeekView();
         showToast('✅ Cancelado - Volviendo al calendario');
     }
