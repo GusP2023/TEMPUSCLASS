@@ -467,11 +467,6 @@ function openStudentForm(editId = null) {
         document.getElementById('studentStartDate').removeAttribute('required');
     } else {
         // Para nuevo alumno
-        const firstDayOfMonth = new Date();
-        firstDayOfMonth.setDate(1);
-        const firstDayStr = firstDayOfMonth.toISOString().split('T')[0];
-        
-        document.getElementById('studentStartDate').min = firstDayStr;
         document.getElementById('studentStartDate').value = new Date().toISOString().split('T')[0];
     }
     
@@ -604,7 +599,6 @@ function showScheduleChangeModal(student, oldSchedules, newSchedules) {
     // ✅ USAR FECHA LOCAL sin timezone issues
     const today = getLocalDateString();
     dateInput.value = today;
-    dateInput.min = today;
     
     // ✅ NUEVO: Buscar asistencias futuras que podrían verse afectadas
     const futureAttendances = findFutureAttendances(student.id, today);
@@ -1161,7 +1155,6 @@ function confirmDeactivateStudent(studentId) {
     
     document.getElementById('deactivateStudentName').textContent = `¿Desactivar a ${student.name}?`;
     document.getElementById('deactivateDate').value = new Date().toISOString().split('T')[0];
-    document.getElementById('deactivateDate').min = new Date().toISOString().split('T')[0];
     
     closeModal();
     modal.classList.add('active');
@@ -1169,6 +1162,22 @@ function confirmDeactivateStudent(studentId) {
     document.getElementById('deactivateForm').onsubmit = (e) => {
         e.preventDefault();
         const fromDate = document.getElementById('deactivateDate').value;
+
+        // Verificar si hay asistencias de CLASES REGULARES después de la fecha de desactivación
+        // (Las recuperaciones son normales, ya que el alumno puede tener clases pendientes)
+        const regularAttendancesAfter = attendance.filter(a => {
+            const attClass = regularClasses.find(rc => rc.id === a.classId);
+            return attClass && attClass.studentId === studentId && a.date >= fromDate;
+        });
+
+        if (regularAttendancesAfter.length > 0) {
+            const confirmed = confirm(
+                `⚠️ ADVERTENCIA: Hay ${regularAttendancesAfter.length} asistencias de clases regulares marcadas después de la fecha de desactivación.\n\n` +
+                `¿Deseas continuar? Las asistencias se mantendrán pero el alumno aparecerá como inactivo.`
+            );
+            if (!confirmed) return;
+        }
+
         deactivateStudent(studentId, fromDate);
     };
 }

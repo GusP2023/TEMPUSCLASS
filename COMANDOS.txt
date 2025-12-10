@@ -2,3 +2,16 @@
   ⎿  /c/Users/Usuario/Documents/GitHub/TEMPUSCLASS
 
 para CLAUDE
+
+
+REM Terminal 1
+docker-compose up -d
+
+REM Terminal 2
+cd backend
+venv\Scripts\activate
+uvicorn app.main:app --reload
+
+REM Terminal 3
+cd apps\teacher
+npm run dev

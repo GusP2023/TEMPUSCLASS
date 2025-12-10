@@ -378,7 +378,7 @@ function findRegularClass(day, time) {
     
     // ✅ BUSCAR estudiante considerando historial de horarios
     const student = students.find(s => {
-        if (!s.active || !isStudentActiveOnDate(s, classDate)) return false;
+        if (!isStudentActiveOnDate(s, classDate)) return false;
         
         // ✅ OBTENER horarios vigentes para esta fecha específica
         const validSchedules = getValidScheduleForDate(s, dateStr);
