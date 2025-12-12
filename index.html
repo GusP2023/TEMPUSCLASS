@@ -501,6 +501,35 @@
         </div>
     </div>
 
+    <!-- Modal Reactivate Student -->
+    <div class="modal" id="reactivateModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">🔄 Reactivar Alumno</h2>
+            </div>
+            <form id="reactivateForm">
+                <p id="reactivateStudentName" style="margin-bottom: 1rem; font-size: 1.1rem;"></p>
+
+                <div class="form-group">
+                    <label class="form-label">¿Desde qué fecha regresa el alumno?</label>
+                    <input type="date" class="form-input" id="reactivateDate" required>
+                    <small style="color: var(--text-light); font-size: 0.85rem; margin-top: 0.25rem; display: block;">
+                        Solo se generarán clases desde esta fecha en adelante
+                    </small>
+                </div>
+
+                <div id="reactivateConflicts" style="display: none; margin-top: 1rem;">
+                    <!-- Conflictos se muestran aquí -->
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="confirmReactivateBtn">Reactivar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal Delete Student -->
     <div class="modal" id="deleteStudentModal">
         <div class="modal-content">

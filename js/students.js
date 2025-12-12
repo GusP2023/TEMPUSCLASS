@@ -1121,31 +1121,59 @@ function populateTimeSlots(selectId = 'studentTime1') {
     });
 }
 
-// Validar horario único
-function validateUniqueSchedule(day, time, excludeId = null, allowFutureStart = true) {
-    // ✅ VALIDAR CONTRA MÚLTIPLES HORARIOS
-    const conflictingStudent = students.find(s => {
-        if (s.id === excludeId || !s.active) return false;
-        
-        // Verificar nuevo formato (schedules)
-        if (s.schedules && s.schedules.length > 0) {
-            return s.schedules.some(schedule => 
-                schedule.day === day && schedule.time === time
-            );
-        }
-        
-        // Compatibilidad con formato antiguo
-        return s.regularDay === day && s.regularTime === time;
-    });
-    
-    if (!conflictingStudent) return true;
-    
-    // Si hay conflicto pero el alumno está desactivado con fecha futura
-    if (allowFutureStart && conflictingStudent.deactivatedAt) {
-        return conflictingStudent.deactivatedAt; // Retorna fecha de disponibilidad
+// ✅ NUEVA: Calcular primera fecha de clase para un día de la semana
+function calculateFirstClassDate(dayOfWeek, fromDate) {
+    const date = typeof fromDate === 'string' ?
+        parseLocalDate(fromDate) : new Date(fromDate);
+
+    const targetDay = dayOfWeek; // 1=Mon, 2=Tue, etc.
+    const currentDay = date.getDay() || 7; // 0=Sun→7, 1=Mon, etc.
+
+    // Calcular días a sumar
+    let daysToAdd = targetDay - currentDay;
+    if (daysToAdd < 0) {
+        daysToAdd += 7; // Próxima semana
     }
-    
-    return false;
+
+    const firstClassDate = new Date(date);
+    firstClassDate.setDate(date.getDate() + daysToAdd);
+
+    return getLocalDateString(firstClassDate);
+}
+
+// ✅ MEJORADO: Validar horario único con validación por fechas
+function validateUniqueSchedule(day, time, excludeId = null, changeDate = null) {
+    const conflicts = students.filter(s => {
+        if (s.id === excludeId) return false;
+
+        // Verificar si tiene este horario
+        const hasSchedule = (s.schedules || []).some(sch =>
+            sch.day === day && sch.time === time
+        ) || (s.regularDay === day && s.regularTime === time);
+
+        if (!hasSchedule) return false;
+
+        // Si está activo → siempre hay conflicto
+        if (s.active) return true;
+
+        // Si está inactivo → validar por fechas
+        if (s.deactivatedAt && changeDate) {
+            const firstNewClassDate = calculateFirstClassDate(day, changeDate);
+            // Conflicto si la primera clase nueva es ANTES de la desactivación
+            return firstNewClassDate < s.deactivatedAt;
+        }
+
+        return false;
+    });
+
+    if (conflicts.length === 0) return true;
+
+    // Retornar info de conflictos
+    return {
+        conflict: true,
+        students: conflicts,
+        availableFrom: conflicts[0].deactivatedAt || null
+    };
 }
 
 // Desactivación con fecha
@@ -1186,26 +1214,143 @@ function deactivateStudent(studentId, fromDate) {
     const student = students.find(s => s.id === studentId);
     student.active = false;
     student.deactivatedAt = fromDate;
-    
-    cancelFutureClasses(studentId, fromDate);
-    
+
+    // ✅ NO cancelar recuperaciones futuras - mantenerlas porque son clases que debe recuperar
+    // cancelFutureClasses(studentId, fromDate); // COMENTADO
+
     saveData();
     renderStudentsList();
     renderWeekView();
     closeModal();
-    updateStudentsStats(); // 👥 AGREGAR esta línea
-    showToast('Alumno desactivado y clases futuras canceladas');
+    updateStudentsStats();
+    showToast('✅ Alumno desactivado. Las recuperaciones programadas se mantienen.');
 }
 
-function reactivateStudent(studentId) {
+// ✅ MEJORADO: Reactivación con modal y validación de conflictos
+function confirmReactivateStudent(studentId) {
     const student = students.find(s => s.id === studentId);
+    const modal = document.getElementById('reactivateModal');
+
+    const scheduleText = (student.schedules || [])
+        .map(s => `${getDayName(s.day)} ${s.time}`)
+        .join(' y ') || 'sin horarios';
+
+    document.getElementById('reactivateStudentName').textContent =
+        `Reactivar a ${student.name} con horarios: ${scheduleText}`;
+    document.getElementById('reactivateDate').value =
+        new Date().toISOString().split('T')[0];
+
+    closeModal();
+    modal.classList.add('active');
+
+    // Validar en tiempo real al cambiar fecha
+    document.getElementById('reactivateDate').addEventListener('change', function() {
+        validateReactivationSchedules(student, this.value);
+    });
+
+    // Validar al enviar formulario
+    document.getElementById('reactivateForm').onsubmit = (e) => {
+        e.preventDefault();
+        const returnDate = document.getElementById('reactivateDate').value;
+
+        const conflicts = validateReactivationSchedules(student, returnDate);
+
+        if (conflicts.hasConflicts) {
+            // Bloquear reactivación
+            showToast('❌ No puedes reactivar. Hay conflictos de horario. Cambia el horario primero.');
+            return;
+        }
+
+        reactivateStudentWithDate(studentId, returnDate);
+    };
+
+    // Validar inmediatamente
+    validateReactivationSchedules(student, document.getElementById('reactivateDate').value);
+}
+
+function validateReactivationSchedules(student, returnDate) {
+    const conflictsDiv = document.getElementById('reactivateConflicts');
+    const schedules = getStudentSchedules(student);
+    const allConflicts = [];
+
+    schedules.forEach(schedule => {
+        const validation = validateUniqueSchedule(
+            schedule.day,
+            schedule.time,
+            student.id,
+            returnDate
+        );
+
+        if (validation.conflict) {
+            allConflicts.push({
+                schedule: schedule,
+                conflictingStudents: validation.students
+            });
+        }
+    });
+
+    if (allConflicts.length > 0) {
+        // Mostrar conflictos
+        conflictsDiv.style.display = 'block';
+        conflictsDiv.innerHTML = `
+            <div class="context-info" style="background: rgba(239, 68, 68, 0.1); padding: 1rem; border-radius: 6px; border-left: 4px solid var(--error);">
+                <strong>⚠️ Conflictos de Horario Detectados:</strong>
+                <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                    ${allConflicts.map(c => `
+                        <li>${getDayName(c.schedule.day)} ${c.schedule.time}:
+                        ocupado por <strong>${c.conflictingStudents.map(s => s.name).join(', ')}</strong></li>
+                    `).join('')}
+                </ul>
+                <p style="margin-top: 0.5rem;"><strong>Debes cambiar el horario antes de reactivar</strong></p>
+                <button type="button" class="btn btn-primary" onclick="closeModal(); openStudentForm('${student.id}');" style="margin-top: 0.5rem;">
+                    Cambiar Horario
+                </button>
+            </div>
+        `;
+
+        document.getElementById('confirmReactivateBtn').disabled = true;
+
+        return { hasConflicts: true, conflicts: allConflicts };
+    } else {
+        conflictsDiv.style.display = 'none';
+        document.getElementById('confirmReactivateBtn').disabled = false;
+        return { hasConflicts: false };
+    }
+}
+
+function reactivateStudentWithDate(studentId, returnDate) {
+    const student = students.find(s => s.id === studentId);
+
+    // Reactivar alumno
     student.active = true;
     student.deactivatedAt = null;
+    student.returnDate = returnDate; // Guardar fecha de vuelta
+
+    // Generar clases desde la fecha de vuelta
+    const schedules = getStudentSchedules(student);
+    schedules.forEach((schedule, index) => {
+        createAndSaveRegularClass(
+            student,
+            schedule.day,
+            schedule.time,
+            index,
+            returnDate, // validFrom
+            null        // validUntil (abierto)
+        );
+    });
+
     saveData();
     renderStudentsList();
+    renderWeekView();
     closeModal();
-    updateStudentsStats(); 
-    showToast('Alumno reactivado');
+    updateStudentsStats();
+
+    showToast(`✅ ${student.name} reactivado desde ${returnDate}`);
+}
+
+// ✅ MANTENER: Función legacy para compatibilidad
+function reactivateStudent(studentId) {
+    confirmReactivateStudent(studentId);
 }
 
 function cancelFutureClasses(studentId, fromDate) {

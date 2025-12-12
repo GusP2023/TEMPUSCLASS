@@ -393,22 +393,20 @@ function findRegularClass(day, time) {
         let regularClass = getValidRegularClassForDate(student, day, time, dateStr);
         
         if (!regularClass) {
-            // Solo verificar si debería haber una clase según el horario del estudiante para esta fecha
+            // ✅ FIX: Crear clase REAL en lugar de temporal
             const validSchedules = getValidScheduleForDate(student, dateStr);
-            const matchingSchedule = validSchedules.find(s => 
+            const matchingSchedule = validSchedules.find(s =>
                 s.day === day && s.time === time
             );
-            
+
             if (matchingSchedule) {
-                // En lugar de crear, usar un objeto temporal que no se guarde en el array global
-                regularClass = {
-                    id: 'temp_' + Date.now() + Math.random(),
-                    studentId: student.id,
-                    day: day,
-                    time: time,
-                    scheduleIndex: validSchedules.findIndex(s => s.day === day && s.time === time),
-                    isTemporary: true
-                };
+                // Crear y guardar clase real usando helper
+                regularClass = createAndSaveRegularClass(
+                    student,
+                    day,
+                    time,
+                    validSchedules.findIndex(s => s.day === day && s.time === time)
+                );
             }
         }
         
@@ -421,6 +419,36 @@ function findRegularClass(day, time) {
     }
     
     return null;
+}
+
+// ✅ NUEVA: Crear y guardar clase regular real (elimina clases temporales)
+function createAndSaveRegularClass(student, day, time, scheduleIndex, validFrom = null, validUntil = null) {
+    // Verificar si ya existe para evitar duplicados
+    const existingClass = regularClasses.find(rc =>
+        rc.studentId === student.id &&
+        rc.day === day &&
+        rc.time === time &&
+        (!validFrom || rc.validFrom === validFrom)
+    );
+
+    if (existingClass) return existingClass;
+
+    // Crear clase REAL
+    const newClass = {
+        id: Date.now() + Math.floor(Math.random() * 10000),
+        studentId: student.id,
+        day: day,
+        time: time,
+        scheduleIndex: scheduleIndex,
+        validFrom: validFrom,
+        validUntil: validUntil
+    };
+
+    // ✅ GUARDAR inmediatamente en el array
+    regularClasses.push(newClass);
+    saveData();
+
+    return newClass;
 }
 
 // ✅ NUEVA: Obtener información de cambios de horario para mostrar en detalles

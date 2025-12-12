@@ -71,6 +71,12 @@ function initApp() {
     specialClasses = JSON.parse(localStorage.getItem('specialClasses') || '[]');
     attendance = JSON.parse(localStorage.getItem('attendance') || '[]');
 
+    // ✅ MIGRACIÓN: Limpiar clases temporales (solo una vez)
+    if (!localStorage.getItem('tempClassesMigrated')) {
+        migrateTemporaryClasses();
+        localStorage.setItem('tempClassesMigrated', 'true');
+    }
+
     // ✅ NUEVA: Detectar primera vez después de cargar datos
     setTimeout(() => {
         if (detectFirstTime()) {
@@ -88,6 +94,19 @@ function saveData() {
     localStorage.setItem('regularClasses', JSON.stringify(regularClasses));
     localStorage.setItem('specialClasses', JSON.stringify(specialClasses));
     localStorage.setItem('attendance', JSON.stringify(attendance));
+}
+
+// ✅ NUEVA: Migración para limpiar clases temporales
+function migrateTemporaryClasses() {
+    // Eliminar clases con flag isTemporary
+    const before = regularClasses.length;
+    regularClasses = regularClasses.filter(rc => !rc.isTemporary);
+    const after = regularClasses.length;
+
+    if (before !== after) {
+        saveData();
+        console.log(`✅ Limpieza: ${before - after} clases temporales eliminadas`);
+    }
 }
 
 function detectFirstTime() {
